@@ -66,7 +66,7 @@ npm run tauri build
 
 1. Press `Ctrl+,` to open the **Settings Tab**.
 2. Enter your API key (default is configured for NVIDIA NIM).
-3. Select your model (e.g., Llama 3.1 8B, GPT-4, etc.)
+3. Select your model (e.g., DeepSeek v4 Pro, Kimi k2.6, GPT OSS 120B, GLM 5.1, etc.)
 4. Set your execution mode:
    - **Ask:** AI only answers questions.
    - **Agent:** AI proposes commands; waits for your approval.
