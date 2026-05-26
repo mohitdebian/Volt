@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --b0: #08090a;
+  --b1: #101215;
+  --b2: #181a1f;
+  --b3: #21242b;
+  --b4: #2b3039;
+  --b5: #383e4a;
+  --t1: #f3f4f6;
+  --t2: #9ca3af;
+  --t3: #4b5563;
+  --br: rgba(255, 255, 255, 0.08);
+  --br2: rgba(255, 255, 255, 0.15);
+  --ac: #6366f1;
+  --ac2: #818cf8;
+  --ac-dim: rgba(99, 102, 241, 0.15);
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --err: #ef4444;
+  --ui: 'Outfit', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --r: 8px;
+  --t: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; width: 100%;
+  background: var(--b0);
+  color: var(--t1);
+  font-family: var(--ui);
+  font-size: 13px;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+
+button, input, select, textarea {
+  font-family: inherit; font-size: inherit;
+  border: none; background: none; outline: none;
+}
+button { cursor: pointer; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--b4); border-radius: 2px; }
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }

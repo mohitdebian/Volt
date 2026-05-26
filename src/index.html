@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Volt</title>
+  <link rel="stylesheet" href="./styles/theme.css" />
+  <link rel="stylesheet" href="./styles/layout.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR ─ tabs · mode · controls -->
+  <header id="top-bar">
+    <div id="tab-strip">
+      <div id="tab-list"></div>
+      <button id="new-tab-btn" class="tab-action-btn" title="New tab">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button id="settings-tab-btn" class="tab" title="Settings">
+        <svg class="tab-icon" width="14" height="14" viewBox="0 0 15 15" fill="none">
+          <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.9 2.9l1.1 1.1M11 11l1.1 1.1M12.1 2.9L11 4M4 11l-1.1 1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span class="tab-title">Settings</span>
+        <div class="tab-close" id="settings-tab-close">
+          <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+      </button>
+    </div>
+
+    <div id="top-right">
+      <button id="open-settings-btn" class="tb-btn" title="Open Settings (Ctrl+,)">
+        <svg width="14" height="14" viewBox="0 0 15 15" fill="none">
+          <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M2.9 2.9l1.1 1.1M11 11l1.1 1.1M12.1 2.9L11 4M4 11l-1.1 1.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button id="exec-mode-pill" class="mode-pill" title="Execution mode">
+        <span id="exec-mode-label">Agent</span>
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 2.5l3 3 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div id="win-controls">
+        <button class="wc-btn" id="win-minimize"><svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1=".5" x2="10" y2=".5" stroke="currentColor" stroke-width="1.2"/></svg></button>
+        <button class="wc-btn" id="win-maximize"><svg width="9" height="9" viewBox="0 0 9 9"><rect x=".5" y=".5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg></button>
+        <button class="wc-btn wc-close" id="win-close"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- TERMINAL (full width, no sidebar) -->
+  <section id="terminal-section" class="dock-right">
+    <div id="terminals"></div>
+    
+    <!-- Resizer handle -->
+    <div id="panel-resizer" class="hidden"></div>
+
+    <!-- AI Container — bottom flex pane so it doesn't cover the terminal prompt -->
+    <div id="ai-container" class="hidden">
+      <!-- Chat History -->
+      <div id="ai-response-area"></div>
+      
+      <!-- Loading State -->
+      <div id="ai-running-bar" class="hidden">
+        <div class="spinner"></div>
+        <span>Generating response...</span>
+        <div class="shortcut-hint">Press <strong>Esc</strong> to cancel</div>
+      </div>
+
+      <!-- Input Bar -->
+      <div id="ai-bar">
+        <div id="ai-bar-badge">
+          <img src="./assets/volt.png" alt="Volt" style="width: 16px; height: 16px;" />
+        </div>
+        <input type="text" id="ai-bar-input" placeholder="Ask Volt AI (Ctrl+I to hide)..." autocomplete="off" spellcheck="false" />
+        
+        <button id="ai-dock-btn" title="Toggle Dock (Bottom/Right)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="15" y1="3" x2="15" y2="21"></line>
+          </svg>
+        </button>
+        
+        <button id="ai-bar-send">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M12 7H2M7.5 2.5L12 7l-4.5 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATUS BAR -->
+  <footer id="status-bar">
+    <div id="status-left">
+      <span class="sc" id="status-shell">zsh</span>
+      <span class="sc" id="status-cwd">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 8.5V3a.5.5 0 01.5-.5H3.8L5 1h4.5a.5.5 0 01.5.5V8.5a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5z" stroke="currentColor" stroke-width="1"/></svg>
+        <span id="cwd-text">~/</span>
+      </span>
+      <span class="sc hidden" id="status-git">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="2.5" r="1.3" stroke="currentColor" stroke-width="1"/><circle cx="5" cy="7.5" r="1.3" stroke="currentColor" stroke-width="1"/><line x1="5" y1="3.8" x2="5" y2="6.2" stroke="currentColor" stroke-width="1"/></svg>
+        <span id="git-branch-text">main</span>
+      </span>
+    </div>
+    <div id="status-right">
+      <span id="ai-mode-indicator" class="hidden">
+        <span class="ai-dot"></span> AI Mode
+      </span>
+      <span id="status-time"></span>
+    </div>
+  </footer>
+
+  <!-- SETTINGS TAB (Full Page, Minimal) -->
+  <section id="settings-section" class="hidden">
+    <div id="settings-layout">
+      <div id="settings-content">
+        <header id="settings-header">
+          <h2>Preferences</h2>
+        </header>
+
+        <div class="settings-group">
+          <h3>NIM API Configuration</h3>
+          <label class="sf"><span>API Key</span><input type="password" id="settings-api-key" placeholder="nvapi-…" /></label>
+          <label class="sf"><span>Base URL</span><input type="text" id="settings-base-url" value="https://integrate.api.nvidia.com/v1" /></label>
+          <label class="sf"><span>Model Preset</span>
+            <select id="settings-model">
+              <option value="">— custom below —</option>
+              <option value="meta/llama-3.1-8b-instruct">Llama 3.1 8B</option>
+              <option value="meta/llama-3.1-70b-instruct">Llama 3.1 70B</option>
+              <option value="meta/llama-3.1-405b-instruct">Llama 3.1 405B</option>
+              <option value="nvidia/nemotron-4-340b-instruct">Nemotron 340B</option>
+              <option value="mistralai/mixtral-8x22b-instruct-v0.1">Mixtral 8×22B</option>
+              <option value="deepseek-ai/deepseek-coder-6.7b-instruct">DeepSeek Coder</option>
+            </select>
+          </label>
+          <label class="sf"><span>Custom Model Override</span><input type="text" id="settings-custom-model" placeholder="org/model-name" /></label>
+          <label class="sf"><span>Temperature — <span id="settings-temp-value">0.3</span></span><input type="range" id="settings-temperature" min="0" max="1" step="0.1" value="0.3" /></label>
+        </div>
+
+        <div class="settings-group">
+          <h3>Terminal & Execution</h3>
+          <label class="sf"><span>Font Size</span><input type="number" id="settings-font-size" value="14" min="10" max="24" /></label>
+          <label class="sf"><span>Execution Mode</span>
+            <div id="exec-mode-selector">
+              <button class="em-btn" data-mode="ask">💬 Ask</button>
+              <button class="em-btn active" data-mode="agent">🤖 Agent</button>
+              <button class="em-btn" data-mode="full">⚡ Full</button>
+            </div>
+          </label>
+        </div>
+        
+        <div class="settings-actions">
+          <button id="settings-save-btn" class="btn-save">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMAND PALETTE -->
+  <div id="command-palette" class="hidden">
+    <div id="command-palette-backdrop"></div>
+    <div id="command-palette-dialog">
+      <input id="command-palette-input" type="text" placeholder="Type a command…" autocomplete="off" />
+      <ul id="command-palette-list"></ul>
+    </div>
+  </div>
+
+  <!-- CONFIRM DIALOG -->
+  <div id="confirm-dialog" class="hidden">
+    <div id="confirm-backdrop"></div>
+    <div id="confirm-box">
+      <div style="font-size:22px">⚠️</div>
+      <h3 id="confirm-title">Dangerous Command</h3>
+      <p id="confirm-message"></p>
+      <code id="confirm-command"></code>
+      <div id="confirm-actions">
+        <button id="confirm-cancel" class="btn-sec">Cancel</button>
+        <button id="confirm-run" class="btn-danger">Run Anyway</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
