@@ -161,6 +161,20 @@ export async function createTerminal(tabId, container, cwd = null) {
       }
     },
 
+    /** Get the last ~100 lines of terminal output for AI context */
+    getText() {
+      const buffer = term.buffer.active;
+      let lines = [];
+      const startLine = Math.max(0, buffer.length - 100);
+      for (let i = startLine; i < buffer.length; i++) {
+        const line = buffer.getLine(i);
+        if (line) {
+          lines.push(line.translateToString(true).trimEnd());
+        }
+      }
+      return lines.join('\n').trim();
+    },
+
     /** Clean up all resources */
     dispose() {
       resizeObserver.disconnect();

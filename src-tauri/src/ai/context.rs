@@ -12,6 +12,7 @@ pub struct TerminalContext {
     pub project_type: Option<String>,
     pub recent_commands: Vec<String>,
     pub last_error: Option<String>,
+    pub terminal_history: Option<String>,
 }
 
 impl TerminalContext {
@@ -32,6 +33,7 @@ impl TerminalContext {
             project_type,
             recent_commands: Vec::new(),
             last_error: None,
+            terminal_history: None,
         }
     }
 
@@ -53,6 +55,9 @@ impl TerminalContext {
             // Truncate error to avoid huge prompts
             let truncated = if err.len() > 500 { &err[..500] } else { err };
             parts.push(format!("- Last error:\n{}", truncated));
+        }
+        if let Some(ref hist) = self.terminal_history {
+            parts.push(format!("- Recent terminal output (for context):\n```\n{}\n```", hist));
         }
 
         if parts.is_empty() {

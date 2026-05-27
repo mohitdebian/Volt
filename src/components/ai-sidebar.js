@@ -6,6 +6,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import store from '../state/store.js';
 import { getActiveTerminal } from '../terminal/tabs.js';
+import { getCwd } from '../terminal/cwd.js';
+import { formatResponse, escapeHtml, scrollMessages, messagesEl } from './utils.js';
+import { executeCommand, showConfirm } from './actions.js';
 
 let requestCounter = 0;
 
@@ -93,7 +96,15 @@ async function sendQuery() {
 
   try {
     const cwd = await getCwd();
-    await invoke('ai_ask', { query, cwd, mode, requestId });
+    
+    // Get terminal output buffer for context
+    let terminalOutput = "";
+    const activeTerm = getActiveTerminal();
+    if (activeTerm) {
+      terminalOutput = activeTerm.getText();
+    }
+
+    await invoke('ai_ask', { query, cwd, mode, requestId, terminalOutput });
   } catch (err) {
     unlistenChunk();
     unlistenDone();

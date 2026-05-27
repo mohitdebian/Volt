@@ -80,8 +80,14 @@ async fn ai_ask(
     cwd: String,
     mode: String,
     request_id: String,
+    terminal_output: Option<String>,
 ) -> Result<String, String> {
-    let context = TerminalContext::gather(&cwd);
+    let mut context = TerminalContext::gather(&cwd);
+    if let Some(out) = terminal_output {
+        if !out.trim().is_empty() {
+            context.terminal_history = Some(out);
+        }
+    }
     let prompt_context = context.to_prompt_context();
 
     let system_prompt = match mode.as_str() {
