@@ -108,11 +108,11 @@ export function toggleAiMode() {
 }
 
 // ── Send AI query ─────────────────────────────────────────
-async function sendQuery() {
+async function sendQuery(queryOverride = null, hidden = false) {
   const input = document.getElementById('ai-bar-input');
-  const query = input?.value.trim();
+  const query = queryOverride !== null ? queryOverride : input?.value.trim();
   if (!query) return;
-  input.value = '';
+  if (queryOverride === null && input) input.value = '';
 
   const bar = document.getElementById('ai-bar');
   const runningBar = document.getElementById('ai-running-bar');
@@ -124,10 +124,12 @@ async function sendQuery() {
   runningBar.classList.remove('hidden');
 
   // Append user message
-  const userDiv = document.createElement('div');
-  userDiv.style.marginBottom = '8px';
-  userDiv.innerHTML = `<strong style="color:var(--t1)">You:</strong> <span>${query.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`;
-  responseArea.appendChild(userDiv);
+  if (!hidden) {
+    const userDiv = document.createElement('div');
+    userDiv.style.marginBottom = '8px';
+    userDiv.innerHTML = `<strong style="color:var(--t1)">You:</strong> <span>${query.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`;
+    responseArea.appendChild(userDiv);
+  }
   
   // Create AI message container
   const aiDiv = document.createElement('div');
@@ -154,9 +156,11 @@ async function sendQuery() {
     // Convert newlines to HTML breaks, wrap backticks in code tags, etc.
     let html = fullResponse
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/```bash\n([\s\S]*?)```/g, '<code>$1</code>')
-      .replace(/```(?:\w+)?\n([\s\S]*?)```/g, '<code>$1</code>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>');
+      .replace(/```bash\r?\n([\s\S]*?)```/g, '<code>$1</code>')
+      .replace(/```(?:\w+)?\r?\n([\s\S]*?)```/g, '<code>$1</code>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--t1)">$1</strong>')
+      .replace(/\n/g, '<br>');
       
     contentSpan.innerHTML = html;
     responseArea.scrollTop = responseArea.scrollHeight;
@@ -168,15 +172,15 @@ async function sendQuery() {
 
   try {
     const cwd = await getCwd();
-    const mode = store.get('aiMode') || 'command';
-    const nimConfig = store.get('nimConfig');
-    console.log('[Volt AI] Sending query:', { query, cwd, mode, requestId });
-    console.log('[Volt AI] NIM config:', {
-      model: nimConfig?.model,
-      base_url: nimConfig?.base_url,
-      api_key: nimConfig?.api_key ? '***set (' + nimConfig.api_key.length + ' chars)***' : '(EMPTY!)'
-    });
-    const invokeResult = await invoke('ai_ask', { query, cwd, mode, requestId });
+    const mode = hidden ? 'summarize' : (store.get('aiMode') || 'command');
+    
+    // Get terminal context
+    let terminalOutput = "";
+    if (term) {
+      terminalOutput = term.getText();
+    }
+    
+    const invokeResult = await invoke('ai_ask', { query, cwd, mode, requestId, terminalOutput });
     console.log('[Volt AI] ai_ask invoke returned successfully. Result length:', invokeResult?.length);
     
     // Cleanup chunk listener
@@ -187,9 +191,11 @@ async function sendQuery() {
       console.log('[Volt AI] No chunks streamed! Rendering full backend payload.');
       let html = invokeResult
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-        .replace(/```bash\n([\s\S]*?)```/g, '<code>$1</code>')
-        .replace(/```(?:\w+)?\n([\s\S]*?)```/g, '<code>$1</code>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>');
+        .replace(/```bash\r?\n([\s\S]*?)```/g, '<code>$1</code>')
+        .replace(/```(?:\w+)?\r?\n([\s\S]*?)```/g, '<code>$1</code>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--t1)">$1</strong>')
+        .replace(/\n/g, '<br>');
       contentSpan.innerHTML = html;
       responseArea.scrollTop = responseArea.scrollHeight;
     }
@@ -203,8 +209,25 @@ async function sendQuery() {
       
       if (commands.length > 0) {
         const combinedCmd = commands.join(' && ');
-        if (execMode === 'full' || execMode === 'agent') {
+        
+        const runIt = () => {
           term.writeCommand(combinedCmd);
+          
+          // Auto-summarize after executing (only if it was an auto-run)
+          setTimeout(() => {
+            const synthQuery = `Please analyze the terminal output for the command: ${combinedCmd}. Summarize what happened in a single, easy to understand response.`;
+            sendQuery(synthQuery, true);
+          }, 2500);
+        };
+        
+        if (execMode === 'full') {
+          runIt();
+        } else if (execMode === 'agent') {
+          if (isDangerous(combinedCmd)) {
+            showConfirm(combinedCmd, "This command looks potentially destructive.", runIt);
+          } else {
+            runIt();
+          }
         } else {
           term.injectCommand(combinedCmd);
         }
@@ -231,8 +254,8 @@ async function sendQuery() {
 // ── Helpers ───────────────────────────────────────────────
 function extractCommands(text) {
   const cmds = [];
-  // Fenced code blocks
-  const re = /```(?:\w*)\n([\s\S]*?)```/g;
+  // Fenced code blocks with optional \r
+  const re = /```(?:\w*)\r?\n([\s\S]*?)```/g;
   let m;
   while ((m = re.exec(text)) !== null) {
     const cmd = m[1].trim();

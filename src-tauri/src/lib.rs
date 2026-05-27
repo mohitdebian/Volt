@@ -108,6 +108,7 @@ async fn ai_ask(
         }
         "docker" => ai::prompts::docker_prompt(&prompt_context),
         "troubleshoot" => ai::prompts::troubleshoot_prompt(&context.os, &prompt_context),
+        "summarize" => ai::prompts::summarize_prompt(&prompt_context),
         _ => ai::prompts::command_generation_prompt(
             &context.os,
             &context.shell,
@@ -138,6 +139,7 @@ async fn ai_ask(
     eprintln!("[Volt AI] request_id={}, mode={}, cwd={}", request_id, mode, cwd);
     eprintln!("[Volt AI] config: model={}, base_url={}, api_key_len={}", 
         config.model, config.base_url, config.api_key.len());
+    eprintln!("[Volt AI] terminal_history present: {}", context.terminal_history.is_some());
 
     if config.api_key.is_empty() {
         return Err("API key not configured. Open Settings (Ctrl+,) and enter your NVIDIA NIM API key.".to_string());

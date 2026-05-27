@@ -133,7 +133,7 @@ function addAssistantPlaceholder() {
 
 function renderCommandBlocks(parentEl, rawText) {
   // Extract fenced code blocks
-  const codeRe = /```(?:\w*)\n([\s\S]*?)```/g;
+  const codeRe = /```(?:\w*)\r?\n([\s\S]*?)```/g;
   let match;
   while ((match = codeRe.exec(rawText)) !== null) {
     const cmd = match[1].trim();
@@ -187,12 +187,34 @@ function buildCommandBlock(cmd) {
       return;
     }
 
+    const runCmd = () => {
+      executeCommand(cmd);
+      insertBtn.innerHTML = `⏳ Running & Analyzing...`;
+      insertBtn.className = 'ai-insert-btn';
+      insertBtn.disabled = true;
+      
+      // Auto-summarize after a short delay to let the command finish outputting
+      // (Using 2.5 seconds as a safe heuristic for most typical commands)
+      setTimeout(() => {
+        if (!document.body.contains(insertBtn)) return;
+        
+        insertBtn.innerHTML = `⏳ Summarizing...`;
+        
+        // Send a synthetic query to the AI
+        const synthQuery = `Please analyze the terminal output for the command: ${cmd}. Summarize what happened in a single, easy to understand response.`;
+        document.getElementById('ai-input').value = synthQuery;
+        sendQuery();
+        
+        insertBtn.remove(); // Remove button after summarizing
+      }, 2500);
+    };
+
     const isDangerous = await checkDangerous(cmd);
     if (execMode === 'agent' && isDangerous) {
-      showConfirm(cmd, isDangerous, () => executeCommand(cmd));
+      showConfirm(cmd, isDangerous, runCmd);
       return;
     }
-    executeCommand(cmd);
+    runCmd();
   });
 
   // Wrap both in a column container

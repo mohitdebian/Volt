@@ -19,10 +19,9 @@ Rules:
 3. Use the most efficient/modern command available
 4. For dangerous operations (rm -rf, sudo, etc.), warn the user before the code block
 5. Never invent file paths or names - use placeholders like <filename> if needed
-6. DO NOT assume the user is working in a Rust, Node, or Python project unless the "Project type" context explicitly says so. Use generic bash commands (like 'rm -rf' for cleanup) instead of language-specific commands (like 'cargo clean') unless specifically requested or contextualized.
-7. Keep conversational text extremely concise.
-
-Respond with the command wrapped in a markdown code block."#,
+6. DO NOT assume the user is working in a Rust, Node, or Python project unless the "Project type" context explicitly says so.
+7. If the user is asking a question that can be answered by the "Recent terminal output" context, answer their question directly in plain text. You do NOT have to generate a command every time.
+8. Keep conversational text extremely concise."#,
         os, shell, cwd, context
     )
 }
@@ -56,6 +55,23 @@ Rules:
 2. Note any potential risks
 3. Suggest safer alternatives if applicable
 4. Keep explanations concise - one line per component"#
+}
+
+/// Output summarization
+pub fn summarize_prompt(context: &str) -> String {
+    format!(
+        r#"You are an expert systems administrator. Your task is to analyze the user's terminal output and summarize what happened.
+        
+Context:
+{}
+
+Rules:
+1. Provide a single, extremely brief TL;DR (1-2 sentences maximum).
+2. Do not use bullet points, detailed memory maps, or verbosity. Get straight to the point.
+3. Do not suggest or generate new commands unless explicitly asked.
+4. Focus ONLY on explaining the recent terminal output."#,
+        context
+    )
 }
 
 /// Git assistant
