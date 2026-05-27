@@ -46,8 +46,12 @@ impl PtyManager {
             .openpty(size)
             .map_err(|e| format!("Failed to open PTY: {}", e))?;
 
-        // Auto-detect default shell
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        // Auto-detect default shell (platform-aware)
+        let shell = if cfg!(target_os = "windows") {
+            std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string())
+        } else {
+            std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
+        };
 
         let mut cmd = CommandBuilder::new(&shell);
         cmd.env("TERM", "xterm-256color");
@@ -55,8 +59,12 @@ impl PtyManager {
 
         if let Some(dir) = cwd {
             cmd.cwd(dir);
-        } else if let Ok(home) = std::env::var("HOME") {
-            cmd.cwd(home);
+        } else {
+            // Use the platform-appropriate home directory variable
+            let home_key = if cfg!(target_os = "windows") { "USERPROFILE" } else { "HOME" };
+            if let Ok(home) = std::env::var(home_key) {
+                cmd.cwd(home);
+            }
         }
 
         let child = pair

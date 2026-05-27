@@ -19,7 +19,11 @@ impl TerminalContext {
     /// Gather context from the current working directory
     pub fn gather(cwd: &str) -> Self {
         let os = get_os_info();
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
+        let shell = if cfg!(target_os = "windows") {
+            std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string())
+        } else {
+            std::env::var("SHELL").unwrap_or_else(|_| "bash".to_string())
+        };
         let git_branch = get_git_branch(cwd);
         let git_status = get_git_status(cwd);
         let project_type = detect_project_type(cwd);
