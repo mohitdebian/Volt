@@ -464,4 +464,13 @@ async function executeWorkflow(plan, container, responseArea, term, execMode) {
   summaryEl.innerHTML = `✅ <strong>All ${totalSteps} steps completed successfully.</strong>`;
   stepsContainer.appendChild(summaryEl);
   responseArea.scrollTop = responseArea.scrollHeight;
+
+  // Auto-summarize workflow result
+  if (execMode !== 'ask' && plan.steps.length > 0) {
+    setTimeout(() => {
+      const lastCmd = plan.steps[plan.steps.length - 1].command;
+      const synthQuery = `The workflow "${plan.plan}" just finished. Please briefly analyze the terminal output for the final step: ${lastCmd}. Provide a concise 1-2 sentence summary of the final state or output.`;
+      sendQuery(synthQuery, true);
+    }, 2500);
+  }
 }
