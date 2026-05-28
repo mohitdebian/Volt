@@ -129,6 +129,35 @@ export async function createTerminal(tabId, container, cwd = null) {
       term.write(data.replace(osc133Re, ''));
     } else {
       term.write(data);
+      
+      // Heuristic fallback for Zsh/Fish (missing OSC 133 markers)
+      // Check if IDE input bar is hidden (meaning a command is currently running/we are waiting)
+      const ideBar = document.getElementById('ide-input-bar');
+      if (ideBar && ideBar.classList.contains('hidden')) {
+        clearTimeout(window[`fallbackTimer_${sessionId}`]);
+        window[`fallbackTimer_${sessionId}`] = setTimeout(() => {
+          // If no output for 400ms, check if we hit a prompt
+          const activeBuffer = term.buffer.active;
+          if (activeBuffer.type === 'alternate') return; // Don't trigger inside vim/htop
+
+          const lines = [];
+          for (let i = Math.max(0, activeBuffer.baseY + activeBuffer.cursorY - 1); i <= activeBuffer.baseY + activeBuffer.cursorY; i++) {
+            const line = activeBuffer.getLine(i);
+            if (line) lines.push(line.translateToString(true).trimEnd());
+          }
+          const text = lines.join('\n').trim();
+          
+          if (/[#$>%❯➜]\s*$/.test(text)) {
+            document.dispatchEvent(new CustomEvent('command-finished', {
+              detail: { exitCode: 0, tabId, sessionId }
+            }));
+            if (activeCommandMarker) {
+              renderCommandBlock(activeCommandMarker);
+              activeCommandMarker = null;
+            }
+          }
+        }, 400);
+      }
     }
   });
 
