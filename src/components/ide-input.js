@@ -80,8 +80,9 @@ export function initIdeInput() {
     const term = getActiveTerminal();
     // Only show if we are NOT in the alternate screen buffer (like vim)
     if (term && term.buffer.active.type !== 'alternate') {
-      bar.classList.remove('hidden');
-      input.focus();
+      // IDE input bar is disabled based on user preference
+      // bar.classList.remove('hidden');
+      // input.focus();
     }
   });
 }
