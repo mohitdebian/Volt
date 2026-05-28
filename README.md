@@ -144,12 +144,11 @@ Volt relies on a minimal HTML/JS/CSS frontend bridging to a highly performant Ru
 
 ## 🤝 Contributing
 
-We love contributions! If you'd like to help make Volt better, please:
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/amazing-feature`).
-3. Commit your changes (`git commit -m 'Add amazing feature'`).
-4. Push to the branch (`git push origin feature/amazing-feature`).
-5. Open a Pull Request!
+We are building the future of the command line, and we'd love your help! 
+
+Whether you're a designer looking to create themes, a Rustacean wanting to optimize the PTY, or an AI engineer building new autonomous tools, there is a place for you here.
+
+👉 **[Check out our beautifully crafted Contribution Guide (CONTRIBUTING.md)](CONTRIBUTING.md) to get started!** It includes fun project ideas, setup instructions, and architecture overviews.
 
 ## 📜 License
 MIT License. See `LICENSE` for more information.
