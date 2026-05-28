@@ -2,7 +2,7 @@
  * Volt — main entry
  * Full-width terminal + inline AI (Ctrl+I toggle)
  */
-import { initTabs, createTab, closeTab, nextTab, prevTab, getActiveTerminal } from './terminal/tabs.js';
+import { initTabs, createTab, closeTab, nextTab, prevTab, getActiveTerminal, splitPane } from './terminal/tabs.js';
 import { initInlineAI, toggleAiMode } from './components/ai-inline.js';
 import { initCommandPalette } from './components/command-palette.js';
 import { initStatusBar } from './components/status-bar.js';
@@ -80,12 +80,33 @@ async function init() {
   initSettings();
   initIdeInput();
 
+  // ── Onboarding ──
+  if (!store.get('onboardingCompleted')) {
+    const modal = document.getElementById('onboarding-modal');
+    modal.classList.remove('hidden');
+    
+    const closeBtn = document.getElementById('onboarding-close-btn');
+    closeBtn.addEventListener('click', () => {
+      modal.classList.add('hidden');
+      store.set('onboardingCompleted', true);
+      
+      // Prompt for API key if missing
+      if (!store.get('nimApiKey')) {
+        setTimeout(() => {
+          store.set('settingsOpen', true);
+        }, 300);
+      }
+    });
+  }
+
   // ── Keyboard shortcuts ──
   document.addEventListener('keydown', e => {
     const ctrl = e.ctrlKey || e.metaKey;
 
     if (ctrl && e.key === 't') { e.preventDefault(); createTab(); return; }
     if (ctrl && e.key === 'w') { e.preventDefault(); closeTab(store.get('activeTabId')); return; }
+    if (ctrl && e.shiftKey && e.key === 'D') { e.preventDefault(); splitPane('row'); return; }
+    if (ctrl && e.shiftKey && e.key === 'E') { e.preventDefault(); splitPane('column'); return; }
     if (ctrl && e.key === 'Tab') { e.preventDefault(); e.shiftKey ? prevTab() : nextTab(); return; }
     if (ctrl && e.key === 'i') { e.preventDefault(); toggleAiMode(); return; }
     if (ctrl && e.shiftKey && e.key === 'P') { e.preventDefault(); store.set('commandPaletteOpen', !store.get('commandPaletteOpen')); return; }

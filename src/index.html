@@ -58,7 +58,7 @@
     <div id="panel-resizer" class="hidden"></div>
 
     <!-- IDE Rich Input Bar (Warp-style) -->
-    <div id="ide-input-bar" class="hidden">
+    <div id="ide-input-bar">
       <div id="ide-prompt">❯</div>
       <div class="ide-input-wrapper">
         <input type="text" id="ide-input" autocomplete="off" spellcheck="false" />
@@ -186,6 +186,61 @@
       <div id="confirm-actions">
         <button id="confirm-cancel" class="btn-sec">Cancel</button>
         <button id="confirm-run" class="btn-danger">Run Anyway</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONBOARDING MODAL -->
+  <div id="onboarding-modal" class="hidden">
+    <div id="onboarding-backdrop"></div>
+    <div id="onboarding-dialog">
+      <div id="onboarding-hero">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+        </svg>
+        <h2>Welcome to Volt</h2>
+        <p>The premium, AI-native terminal for power users.</p>
+      </div>
+      <div id="onboarding-features">
+        <div class="onboarding-feature">
+          <div class="of-icon" style="color: #6366f1">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </div>
+          <div class="of-text">
+            <h4>Ask Volt AI</h4>
+            <p>Press <kbd>Ctrl</kbd> + <kbd>I</kbd> to toggle the inline AI assistant.</p>
+          </div>
+        </div>
+        <div class="onboarding-feature">
+          <div class="of-icon" style="color: #a855f7">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </div>
+          <div class="of-text">
+            <h4>Command Palette</h4>
+            <p>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> to search commands.</p>
+          </div>
+        </div>
+        <div class="onboarding-feature">
+          <div class="of-icon" style="color: #10b981">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+          </div>
+          <div class="of-text">
+            <h4>Split Panes</h4>
+            <p>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> / <kbd>E</kbd> to split screen.</p>
+          </div>
+        </div>
+        <div class="onboarding-feature">
+          <div class="of-icon" style="color: #eab308">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </div>
+          <div class="of-text">
+            <h4>API Key Needed</h4>
+            <p>Press <kbd>Ctrl</kbd> + <kbd>,</kbd> to set your NVIDIA NIM key.</p>
+          </div>
+        </div>
+      </div>
+      <div class="onboarding-actions">
+        <button id="onboarding-close-btn" class="btn-primary">Let's Get Started</button>
       </div>
     </div>
   </div>
