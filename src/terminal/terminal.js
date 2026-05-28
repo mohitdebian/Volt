@@ -52,7 +52,7 @@ export async function createTerminal(tabId, container, cwd = null) {
       brightWhite:   '#ffffff',
     },
     allowProposedApi: true,
-    scrollback: 5000,
+    scrollback: 2000,
     smoothScrollDuration: 80,
     macOptionIsMeta: true,
   });

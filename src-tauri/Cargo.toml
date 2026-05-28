@@ -19,8 +19,11 @@ tauri-plugin-store = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Async runtime
-tokio = { version = "1", features = ["full"] }
+# Async runtime (stripped down features)
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time", "sync", "net"] }
+
+# Optimized memory allocator
+mimalloc = { version = "0.1", default-features = false }
 
 # PTY for terminal emulation
 portable-pty = "0.8"
@@ -41,7 +44,7 @@ regex = "1"
 dirs = "5"
 
 [profile.release]
-opt-level = 3
+opt-level = "s"  # Optimize for size
 lto = true
 strip = true
 codegen-units = 1
