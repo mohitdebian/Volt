@@ -161,6 +161,8 @@ Workflow Execution Rules:
 - Each step must have exactly ONE shell command. Use && to chain sub-commands within a step.
 - Maximum 15 steps.
 - DO NOT assume the user is working in a Rust environment unless they ask for it or the context shows Cargo files. Use appropriate tools for the request (Node, Python, Go, etc).
+- NEVER use `echo` with escaped newlines (`\n`) to create files. This breaks shell parsing. 
+- ALWAYS use `cat << 'EOF' > filename` heredocs for creating or writing to files.
 - Use modern CLI tools and commands."#,
         os, shell, cwd, context
     )
