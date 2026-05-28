@@ -232,18 +232,22 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
 
     const finalResponse = invokeResult || fullResponse;
 
+    let didExecute = false;
+
     if (!finalResponse.trim()) {
       contentSpan.innerHTML = '<span style="color:var(--e1)">No response from AI server. Check API URL/Key.</span>';
     } else {
       // Check if this is a workflow JSON response
       const workflowPlan = tryParseWorkflow(finalResponse);
       if (workflowPlan) {
+        didExecute = true;
         contentSpan.innerHTML = '';
         executeWorkflow(workflowPlan, aiDiv, responseArea, term, execMode);
       } else {
         let commands = extractCommands(finalResponse);
         
         if (commands.length > 0) {
+          didExecute = true;
           const combinedCmd = commands.join(' && ');
           
           const runIt = () => {
@@ -274,7 +278,14 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
     // Hide running bar and restore input
     runningBar.classList.add('hidden');
     bar.classList.remove('hidden');
-    document.getElementById('ai-bar-input')?.focus();
+    
+    // Crucial fix: if we executed a command, focus the terminal so the user can interact (e.g. type passwords).
+    // Otherwise, keep focus in the AI bar for follow-up chatting.
+    if (didExecute) {
+      getActiveTerminal()?.focus();
+    } else {
+      if (!hidden) document.getElementById('ai-bar-input')?.focus();
+    }
     
   } catch (err) {
     unlistenChunk();
@@ -414,8 +425,18 @@ async function executeWorkflow(plan, container, responseArea, term, execMode) {
       term.injectCommand(step.command);
     }
 
-    // Wait for the command to finish (using a timeout-based approach)
-    await new Promise(r => setTimeout(r, 3000));
+    // Wait for the command to finish using the OSC 133 shell integration event
+    if (execMode !== 'ask') {
+      await new Promise((resolve) => {
+        const onFinished = () => {
+          document.removeEventListener('command-finished', onFinished);
+          resolve();
+        };
+        document.addEventListener('command-finished', onFinished);
+      });
+    } else {
+      await new Promise(r => setTimeout(r, 100)); // Just a small tick if we're only injecting
+    }
 
     // Mark as completed
     stepEl.style.borderLeftColor = '#98c379';
