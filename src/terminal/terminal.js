@@ -27,7 +27,7 @@ export async function createTerminal(tabId, container, cwd = null) {
     cursorBlink: true,
     cursorStyle: 'bar',
     theme: {
-      background:          '#0e0e0e',   /* matches --bg-1 */
+      background:          'transparent',
       foreground:          '#d4d4d4',
       cursor:              '#ffffff',
       cursorAccent:        '#0e0e0e',
@@ -51,6 +51,7 @@ export async function createTerminal(tabId, container, cwd = null) {
       brightCyan:    '#56b6c2',
       brightWhite:   '#ffffff',
     },
+    allowTransparency: true,
     allowProposedApi: true,
     scrollback: 2000,
     smoothScrollDuration: 80,
