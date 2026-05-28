@@ -1,6 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Star-Struck.png" alt="Star-Struck" width="100" />
-  <h1>Join the Volt Revolution</h1>
+  <h1>🤩 Join the Volt Revolution</h1>
   <p><b>Help us build the most beautiful, intelligent, and agentic terminal in the world.</b></p>
 </div>
 
@@ -19,28 +18,30 @@ We care deeply about **aesthetics (glassmorphism)**, **performance (Rust/Tauri)*
 <summary><b>✨ Click here for some fun animation magic!</b></summary>
 <br>
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Rocket.png" alt="Rocket" width="80" />
+  <h1>🚀</h1>
   <p><i>Houston, we have liftoff! Welcome aboard.</i></p>
 </div>
 </details>
 
 ---
 
-## 💡 What Can I Build? (Contribution Ideas)
+## 💡 What Can I Build? (Real Engineering Tasks)
 
-Not sure where to start? Here are some incredibly fun and high-impact features we’d love to see:
+Not sure where to start? We have some real, pressing architectural challenges and bugs that need your help!
 
-### 1. 🌈 Themes & Aesthetics
-- **Theme Engine:** Build a UI panel to let users switch between themes (Cyberpunk, Light Mode, Dracula, etc.).
-- **Vibrant ASCII:** Add a feature that colorizes the output of boring standard commands using AI.
+### 1. 🔒 Security: API Key Storage (Bug)
+- **The Issue:** Currently, the NVIDIA NIM/OpenAI API keys are stored in plaintext inside the browser's `localStorage` (`src/state/store.js`).
+- **The Fix:** Migrate the credentials storage to use Tauri's native secure keychain (`tauri-plugin-store` or OS-native keyring) so API keys are heavily encrypted at rest.
 
-### 2. 🧠 Agentic Intelligence
-- **Voice Mode:** Integrate browser WebSpeech API so users can literally *talk* to their terminal and have the AI execute commands.
-- **Auto-Fixer:** When a command fails (exit code > 0), automatically trigger the AI to analyze the `stderr` and propose a fix.
+### 2. 🧠 Context Engine: Git & File Tree Awareness (Improvement)
+- **The Issue:** Volt's AI only "sees" the last 100 lines of terminal text. It doesn't actually understand the layout of the project you are in.
+- **The Fix:** Build a Rust plugin that automatically ingests the current directory's `git status` and a lightweight file tree map, appending it silently to the AI's system prompt.
 
-### 3. ⚙️ Core Terminal & Rust
-- **Custom Shell Support:** Improve the PTY integration for PowerShell on Windows or Nushell.
-- **Tab Persistence:** Save the user's terminal tabs and working directories so they persist across app restarts.
+### 3. 🐛 Terminal Emulation: Prompt Detection (Bug)
+- **The Issue:** To know when a command finishes, `terminal.js` uses a fragile regex fallback (`/[#$>%❯➜]\s*$/`) for shells that don't emit OSC 133 markers. This causes false positives (e.g. inside Vim or if text ends with a `#`).
+- **The Fix:** Build a native shell integration script (like iTerm2 or VSCode uses) that forces Bash/Zsh/Fish to emit strict ANSI markers when a prompt begins and ends.
+
+*(Note: We recently fixed a major security bug where the frontend used a fragile JavaScript array to detect dangerous commands. It now successfully uses the Rust AST analyzer (`command_guard.rs`)!)*
 
 ---
 
@@ -77,6 +78,6 @@ When you're ready to share your magic:
 
 <div align="center">
   <br/>
-  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Waving%20Hand.png" alt="Waving Hand" width="50" />
+  <h1>👋</h1>
   <p><b>We can't wait to see what you build.</b></p>
 </div>

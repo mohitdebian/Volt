@@ -1,7 +1,6 @@
 /// System prompt templates for different AI operational modes.
 /// Each prompt is designed to be concise to minimize token usage
 /// while providing the AI with enough context to be accurate.
-
 /// Command generation: converts natural language to shell commands
 pub fn command_generation_prompt(os: &str, shell: &str, cwd: &str, context: &str) -> String {
     format!(

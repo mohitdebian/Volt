@@ -272,11 +272,19 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
           if (execMode === 'full') {
             runIt();
           } else if (execMode === 'agent') {
-            if (isDangerous(combinedCmd)) {
-              showConfirm(combinedCmd, "This command looks potentially destructive.", runIt);
-            } else {
-              runIt();
-            }
+            invoke('analyze_command_risk', { command: combinedCmd }).then((risk) => {
+              if (risk.requires_confirmation) {
+                showConfirm(combinedCmd, risk.reason || "This command looks potentially destructive.", runIt);
+              } else {
+                runIt();
+              }
+            }).catch(() => {
+              if (isDangerous(combinedCmd)) {
+                showConfirm(combinedCmd, "This command looks potentially destructive.", runIt);
+              } else {
+                runIt();
+              }
+            });
           } else {
             term.injectCommand(combinedCmd);
           }
@@ -426,13 +434,27 @@ async function executeWorkflow(plan, container, responseArea, term, execMode) {
     responseArea.scrollTop = responseArea.scrollHeight;
 
     // Check if dangerous
-    if (execMode === 'agent' && isDangerous(step.command)) {
-      await new Promise((resolve) => {
-        showConfirm(step.command, `Workflow step ${step.step}: This command looks potentially destructive.`, () => {
-          term.writeCommand(step.command);
-          resolve();
+    if (execMode === 'agent') {
+      let dangerous = false;
+      let reason = `Workflow step ${step.step}: This command looks potentially destructive.`;
+      try {
+        const risk = await invoke('analyze_command_risk', { command: step.command });
+        dangerous = risk.requires_confirmation;
+        if (risk.reason) reason = `Workflow step ${step.step}: ${risk.reason}`;
+      } catch (e) {
+        dangerous = isDangerous(step.command);
+      }
+
+      if (dangerous) {
+        await new Promise((resolve) => {
+          showConfirm(step.command, reason, () => {
+            term.writeCommand(step.command);
+            resolve();
+          });
         });
-      });
+      } else {
+        term.writeCommand(step.command);
+      }
     } else if (execMode !== 'ask') {
       term.writeCommand(step.command);
     } else {
