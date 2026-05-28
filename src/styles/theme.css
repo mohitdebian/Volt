@@ -28,13 +28,23 @@
 
 html, body {
   height: 100%; width: 100%;
-  background: var(--b0);
+  background: transparent;
   color: var(--t1);
   font-family: var(--ui);
   font-size: 13px;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   color-scheme: dark;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 9, 10, 0.70);
+  backdrop-filter: blur(30px) saturate(150%);
+  border-radius: 8px; /* For rounded corners on some OS */
 }
 
 button, input, select, textarea {
