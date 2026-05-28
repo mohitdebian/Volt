@@ -238,11 +238,20 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
       contentSpan.innerHTML = '<span style="color:var(--e1)">No response from AI server. Check API URL/Key.</span>';
     } else {
       // Check if this is a workflow JSON response
-      const workflowPlan = tryParseWorkflow(finalResponse);
-      if (workflowPlan) {
+      const workflowResult = tryParseWorkflow(finalResponse);
+      if (workflowResult) {
         didExecute = true;
-        contentSpan.innerHTML = '';
-        executeWorkflow(workflowPlan, aiDiv, responseArea, term, execMode);
+        
+        let html = '';
+        if (workflowResult.textBefore) {
+          html = workflowResult.textBefore
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--t1)">$1</strong>')
+            .replace(/\n/g, '<br>') + '<br><br>';
+        }
+        contentSpan.innerHTML = html;
+        
+        executeWorkflow(workflowResult.parsed, aiDiv, responseArea, term, execMode);
       } else {
         let commands = extractCommands(finalResponse);
         
@@ -365,15 +374,19 @@ function isWorkflowQuery(query) {
 
 function tryParseWorkflow(text) {
   try {
-    // Try to extract JSON from the response (may be wrapped in markdown)
     let jsonStr = text.trim();
-    // Strip markdown code fences if present
-    const fenceMatch = jsonStr.match(/```(?:json)?\r?\n([\s\S]*?)```/);
-    if (fenceMatch) jsonStr = fenceMatch[1].trim();
+    let textBefore = "";
+    
+    // Extract JSON from the response if wrapped in markdown
+    const fenceMatch = jsonStr.match(/([\s\S]*?)```(?:json)?\r?\n([\s\S]*?)```/);
+    if (fenceMatch) {
+      textBefore = fenceMatch[1].trim();
+      jsonStr = fenceMatch[2].trim();
+    }
     
     const parsed = JSON.parse(jsonStr);
     if (parsed && parsed.plan && Array.isArray(parsed.steps) && parsed.steps.length > 0) {
-      return parsed;
+      return { parsed, textBefore };
     }
   } catch (e) {
     // Not a workflow JSON, that's fine
