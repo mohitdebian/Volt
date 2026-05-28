@@ -118,6 +118,26 @@ impl MemoryDb {
         Ok(records)
     }
 
+    /// Get a single completion suggestion based on prefix (Fish-style ghost text)
+    pub fn suggest_command(&self, project_path: &str, partial_cmd: &str) -> Result<Option<String>, String> {
+        let mut stmt = self.conn.prepare(
+            "SELECT command FROM command_history
+             WHERE project_path = ?1 AND command LIKE ?2 AND command != ?3
+             ORDER BY frequency DESC, last_used_at DESC
+             LIMIT 1"
+        ).map_err(|e| format!("DB error: {}", e))?;
+
+        let like_pattern = format!("{}%", partial_cmd);
+        let mut rows = stmt.query(params![project_path, like_pattern, partial_cmd])
+            .map_err(|e| format!("DB error: {}", e))?;
+
+        if let Some(row) = rows.next().map_err(|e| format!("DB error: {}", e))? {
+            Ok(Some(row.get(0).unwrap()))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Save an AI conversation for future reference
     pub fn save_ai_memory(&self, project_path: &str, query: &str, response: &str) -> Result<(), String> {
         let now = chrono::Utc::now().timestamp();

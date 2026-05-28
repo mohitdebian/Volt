@@ -7,6 +7,7 @@ import { initInlineAI, toggleAiMode } from './components/ai-inline.js';
 import { initCommandPalette } from './components/command-palette.js';
 import { initStatusBar } from './components/status-bar.js';
 import { initSettings } from './components/settings-panel.js';
+import { initIdeInput } from './components/ide-input.js';
 import store from './state/store.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -77,6 +78,7 @@ async function init() {
   initCommandPalette();
   initStatusBar();
   initSettings();
+  initIdeInput();
 
   // ── Keyboard shortcuts ──
   document.addEventListener('keydown', e => {

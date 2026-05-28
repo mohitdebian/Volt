@@ -219,6 +219,7 @@ export async function createTerminal(tabId, container, cwd = null) {
     sessionId,
     fitAddon,
     pane,
+    cwd,
 
     focus() {
       term.focus();

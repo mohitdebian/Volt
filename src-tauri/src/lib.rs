@@ -219,6 +219,19 @@ fn get_frequent_commands(
 }
 
 #[tauri::command]
+fn suggest_command(
+    state: State<'_, AppState>,
+    project_path: String,
+    partial_cmd: String,
+) -> Result<Option<String>, String> {
+    let db = state
+        .memory_db
+        .lock()
+        .map_err(|e| format!("Lock error: {}", e))?;
+    db.suggest_command(&project_path, &partial_cmd)
+}
+
+#[tauri::command]
 fn get_ai_memory(
     state: State<'_, AppState>,
     project_path: String,
@@ -300,6 +313,7 @@ pub fn run() {
             // Memory
             save_command,
             get_frequent_commands,
+            suggest_command,
             get_ai_memory,
             // System
             get_system_info,

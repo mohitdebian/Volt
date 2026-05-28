@@ -136,6 +136,62 @@
   overflow: hidden;
 }
 
+/* IDE Input Bar (Warp-style) */
+#ide-input-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: var(--b1);
+  border: 1px solid var(--b3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 100;
+  transition: opacity 0.2s, transform 0.2s;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+#ide-input-bar.hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+#ide-prompt {
+  color: var(--ac1);
+  font-weight: bold;
+  margin-right: 10px;
+  user-select: none;
+}
+.ide-input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+#ide-input {
+  width: 100%;
+  background: transparent;
+  color: var(--t1);
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  z-index: 2;
+}
+#ide-ghost-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  color: var(--t3);
+  pointer-events: none;
+  white-space: pre;
+  z-index: 1;
+}
+
 #terminal-section.dock-right {
   flex-direction: row;
 }
