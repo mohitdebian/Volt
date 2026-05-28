@@ -81,17 +81,26 @@ async function init() {
   initIdeInput();
 
   // ── Onboarding ──
-  if (!store.get('onboardingCompleted')) {
+  if (!localStorage.getItem('onboardingCompleted')) {
     const modal = document.getElementById('onboarding-modal');
     modal.classList.remove('hidden');
     
     const closeBtn = document.getElementById('onboarding-close-btn');
     closeBtn.addEventListener('click', () => {
       modal.classList.add('hidden');
-      store.set('onboardingCompleted', true);
+      localStorage.setItem('onboardingCompleted', 'true');
       
-      // Prompt for API key if missing
-      if (!store.get('nimApiKey')) {
+      // Prompt for API key if missing (checking localStorage settings)
+      const settingsStr = localStorage.getItem('nexterm_settings');
+      let hasKey = false;
+      if (settingsStr) {
+        try {
+          const parsed = JSON.parse(settingsStr);
+          if (parsed.api_key && parsed.api_key.trim() !== '') hasKey = true;
+        } catch(e) {}
+      }
+      
+      if (!hasKey) {
         setTimeout(() => {
           store.set('settingsOpen', true);
         }, 300);
