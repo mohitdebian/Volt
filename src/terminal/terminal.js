@@ -92,8 +92,32 @@ export async function createTerminal(tabId, container, cwd = null) {
   });
 
   // Listen for PTY output from Rust and write to xterm
+  // Also parse OSC 133 shell integration markers for exit code detection
+  let lastExitCode = 0;
+  const osc133Re = /\x1b\]133;D;(\d+)\x07/;
+  
   const unlistenOutput = await listen(`pty-output-${sessionId}`, (event) => {
-    term.write(event.payload);
+    const data = event.payload;
+    
+    // Check for OSC 133 exit code marker
+    const match = osc133Re.exec(data);
+    if (match) {
+      lastExitCode = parseInt(match[1], 10);
+      if (lastExitCode !== 0) {
+        // Dispatch a custom event so the AI can auto-debug
+        document.dispatchEvent(new CustomEvent('command-failed', {
+          detail: {
+            exitCode: lastExitCode,
+            tabId,
+            sessionId,
+          }
+        }));
+      }
+      // Strip the OSC marker from visible output
+      term.write(data.replace(osc133Re, ''));
+    } else {
+      term.write(data);
+    }
   });
 
   // Listen for PTY exit

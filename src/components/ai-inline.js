@@ -101,6 +101,27 @@ export function initInlineAI() {
       getActiveTerminal()?.fit();
     }
   });
+
+  // ── Auto-Debug: listen for failed commands ──────────────────
+  let autoDebugCooldown = false;
+  document.addEventListener('command-failed', (e) => {
+    const { exitCode } = e.detail;
+    // Only auto-debug if AI panel is open and we're not already debugging
+    if (!store.get('aiModeActive') || autoDebugCooldown) return;
+    
+    autoDebugCooldown = true;
+    setTimeout(() => { autoDebugCooldown = false; }, 5000); // 5s cooldown
+
+    const term = getActiveTerminal();
+    if (!term) return;
+
+    // Grab recent terminal output for error context
+    const errorOutput = term.getText();
+    const debugQuery = `The last command failed with exit code ${exitCode}. Here is the recent terminal output. Explain the error and suggest a fix.`;
+    
+    // Send as a hidden debug query
+    sendQuery(debugQuery, true, 'debug');
+  });
 }
 
 export function toggleAiMode() {
@@ -108,7 +129,7 @@ export function toggleAiMode() {
 }
 
 // ── Send AI query ─────────────────────────────────────────
-async function sendQuery(queryOverride = null, hidden = false) {
+async function sendQuery(queryOverride = null, hidden = false, modeOverride = null) {
   const input = document.getElementById('ai-bar-input');
   const query = queryOverride !== null ? queryOverride : input?.value.trim();
   if (!query) return;
@@ -134,7 +155,11 @@ async function sendQuery(queryOverride = null, hidden = false) {
   // Create AI message container
   const aiDiv = document.createElement('div');
   aiDiv.style.marginBottom = '16px';
-  aiDiv.innerHTML = `<strong style="color:var(--ac2)">Volt AI:</strong> <span class="content"></span>`;
+  const isAutoDebug = hidden && modeOverride === 'debug';
+  const aiLabel = isAutoDebug 
+    ? '<strong style="color:#e06c75">🔴 Auto-Debug:</strong>' 
+    : '<strong style="color:var(--ac2)">Volt AI:</strong>';
+  aiDiv.innerHTML = `${aiLabel} <span class="content"></span>`;
   responseArea.appendChild(aiDiv);
   
   const contentSpan = aiDiv.querySelector('.content');
@@ -172,7 +197,12 @@ async function sendQuery(queryOverride = null, hidden = false) {
 
   try {
     const cwd = await getCwd();
-    const mode = hidden ? 'summarize' : (store.get('aiMode') || 'command');
+    let mode = modeOverride || (hidden ? 'summarize' : (store.get('aiMode') || 'command'));
+    
+    // Auto-detect workflow-type prompts
+    if (!modeOverride && !hidden && isWorkflowQuery(query)) {
+      mode = 'workflow';
+    }
     
     // Get terminal context
     let terminalOutput = "";
@@ -205,31 +235,38 @@ async function sendQuery(queryOverride = null, hidden = false) {
     if (!finalResponse.trim()) {
       contentSpan.innerHTML = '<span style="color:var(--e1)">No response from AI server. Check API URL/Key.</span>';
     } else {
-      let commands = extractCommands(finalResponse);
-      
-      if (commands.length > 0) {
-        const combinedCmd = commands.join(' && ');
+      // Check if this is a workflow JSON response
+      const workflowPlan = tryParseWorkflow(finalResponse);
+      if (workflowPlan) {
+        contentSpan.innerHTML = '';
+        executeWorkflow(workflowPlan, aiDiv, responseArea, term, execMode);
+      } else {
+        let commands = extractCommands(finalResponse);
         
-        const runIt = () => {
-          term.writeCommand(combinedCmd);
+        if (commands.length > 0) {
+          const combinedCmd = commands.join(' && ');
           
-          // Auto-summarize after executing (only if it was an auto-run)
-          setTimeout(() => {
-            const synthQuery = `Please analyze the terminal output for the command: ${combinedCmd}. Summarize what happened in a single, easy to understand response.`;
-            sendQuery(synthQuery, true);
-          }, 2500);
-        };
-        
-        if (execMode === 'full') {
-          runIt();
-        } else if (execMode === 'agent') {
-          if (isDangerous(combinedCmd)) {
-            showConfirm(combinedCmd, "This command looks potentially destructive.", runIt);
-          } else {
+          const runIt = () => {
+            term.writeCommand(combinedCmd);
+            
+            // Auto-summarize after executing (only if it was an auto-run)
+            setTimeout(() => {
+              const synthQuery = `Please analyze the terminal output for the command: ${combinedCmd}. Summarize what happened in a single, easy to understand response.`;
+              sendQuery(synthQuery, true);
+            }, 2500);
+          };
+          
+          if (execMode === 'full') {
             runIt();
+          } else if (execMode === 'agent') {
+            if (isDangerous(combinedCmd)) {
+              showConfirm(combinedCmd, "This command looks potentially destructive.", runIt);
+            } else {
+              runIt();
+            }
+          } else {
+            term.injectCommand(combinedCmd);
           }
-        } else {
-          term.injectCommand(combinedCmd);
         }
       }
     }
@@ -300,4 +337,96 @@ async function getCwd() {
 
 function escapeForTerminal(str) {
   return str.replace(/[\x00-\x1f]/g, '');
+}
+
+// ── Workflow Detection ────────────────────────────────────
+const WORKFLOW_KEYWORDS = [
+  'set up', 'setup', 'create a project', 'create a new', 'scaffold',
+  'install and configure', 'build me', 'initialize', 'init a',
+  'deploy', 'migrate', 'bootstrap', 'configure a', 'set me up',
+];
+
+function isWorkflowQuery(query) {
+  const lower = query.toLowerCase();
+  return WORKFLOW_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+function tryParseWorkflow(text) {
+  try {
+    // Try to extract JSON from the response (may be wrapped in markdown)
+    let jsonStr = text.trim();
+    // Strip markdown code fences if present
+    const fenceMatch = jsonStr.match(/```(?:json)?\r?\n([\s\S]*?)```/);
+    if (fenceMatch) jsonStr = fenceMatch[1].trim();
+    
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && parsed.plan && Array.isArray(parsed.steps) && parsed.steps.length > 0) {
+      return parsed;
+    }
+  } catch (e) {
+    // Not a workflow JSON, that's fine
+  }
+  return null;
+}
+
+async function executeWorkflow(plan, container, responseArea, term, execMode) {
+  const totalSteps = plan.steps.length;
+  
+  // Render plan header
+  container.innerHTML = `
+    <strong style="color:#98c379">📋 Workflow:</strong> ${plan.plan}
+    <span style="color:var(--t3);font-size:0.85em">(${totalSteps} steps)</span>
+    <div class="workflow-steps" style="margin-top:8px"></div>
+  `;
+  const stepsContainer = container.querySelector('.workflow-steps');
+  
+  // Render all steps as pending
+  for (const step of plan.steps) {
+    const stepEl = document.createElement('div');
+    stepEl.id = `workflow-step-${step.step}`;
+    stepEl.style.cssText = 'padding:4px 0;color:var(--t3);font-size:0.9em;border-left:2px solid var(--b3);padding-left:8px;margin:4px 0;';
+    stepEl.innerHTML = `⏳ <strong>Step ${step.step}/${totalSteps}:</strong> ${step.description} <code style="font-size:0.85em;color:var(--t3)">${step.command}</code>`;
+    stepsContainer.appendChild(stepEl);
+  }
+  responseArea.scrollTop = responseArea.scrollHeight;
+
+  // Execute steps sequentially
+  for (const step of plan.steps) {
+    const stepEl = document.getElementById(`workflow-step-${step.step}`);
+    
+    // Mark as running
+    stepEl.style.borderLeftColor = '#61afef';
+    stepEl.style.color = 'var(--t1)';
+    stepEl.innerHTML = `⏳ <strong>Step ${step.step}/${totalSteps}:</strong> ${step.description} <code style="font-size:0.85em">${step.command}</code> <span style="color:#61afef">(running...)</span>`;
+    responseArea.scrollTop = responseArea.scrollHeight;
+
+    // Check if dangerous
+    if (execMode === 'agent' && isDangerous(step.command)) {
+      await new Promise((resolve) => {
+        showConfirm(step.command, `Workflow step ${step.step}: This command looks potentially destructive.`, () => {
+          term.writeCommand(step.command);
+          resolve();
+        });
+      });
+    } else if (execMode !== 'ask') {
+      term.writeCommand(step.command);
+    } else {
+      term.injectCommand(step.command);
+    }
+
+    // Wait for the command to finish (using a timeout-based approach)
+    await new Promise(r => setTimeout(r, 3000));
+
+    // Mark as completed
+    stepEl.style.borderLeftColor = '#98c379';
+    stepEl.innerHTML = `✅ <strong>Step ${step.step}/${totalSteps}:</strong> ${step.description} <code style="font-size:0.85em">${step.command}</code>`;
+    responseArea.scrollTop = responseArea.scrollHeight;
+  }
+
+  // Final summary
+  const summaryEl = document.createElement('div');
+  summaryEl.style.cssText = 'margin-top:8px;padding:6px 10px;background:rgba(152,195,121,0.1);border-radius:4px;color:#98c379;font-size:0.9em;';
+  summaryEl.innerHTML = `✅ <strong>All ${totalSteps} steps completed successfully.</strong>`;
+  stepsContainer.appendChild(summaryEl);
+  responseArea.scrollTop = responseArea.scrollHeight;
 }

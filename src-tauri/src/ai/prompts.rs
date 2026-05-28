@@ -124,3 +124,35 @@ Rules:
         os, context
     )
 }
+
+/// Multi-step workflow planner
+pub fn workflow_prompt(os: &str, shell: &str, cwd: &str, context: &str) -> String {
+    format!(
+        r#"You are an expert automation assistant. The user wants you to plan and execute a multi-step workflow.
+
+Environment:
+- OS: {}
+- Shell: {}
+- Working directory: {}
+{}
+
+You MUST respond with ONLY a valid JSON object in this exact format (no markdown, no explanation, no wrapping):
+{{
+  "plan": "Short description of what you're doing",
+  "steps": [
+    {{"step": 1, "description": "What this step does", "command": "the shell command to run"}},
+    {{"step": 2, "description": "What this step does", "command": "the shell command to run"}}
+  ]
+}}
+
+Rules:
+1. Return ONLY the JSON object. No markdown code fences. No text before or after.
+2. Each step must have exactly one shell command.
+3. Use && to chain sub-commands within a single step if needed.
+4. Keep descriptions short (under 10 words).
+5. Order steps logically so each builds on the previous.
+6. Maximum 10 steps.
+7. For dangerous operations, split into a separate step so the user can review it."#,
+        os, shell, cwd, context
+    )
+}

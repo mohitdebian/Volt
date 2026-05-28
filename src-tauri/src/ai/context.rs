@@ -73,11 +73,23 @@ impl TerminalContext {
 }
 
 fn get_os_info() -> String {
-    let output = Command::new("uname").arg("-sr").output();
-    match output {
-        Ok(o) => String::from_utf8_lossy(&o.stdout).trim().to_string(),
-        Err(_) => "Linux".to_string(),
+    let os = std::env::consts::OS;
+    let arch = std::env::consts::ARCH;
+
+    // On Linux/macOS, try to get kernel version for richer context
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = Command::new("uname").arg("-sr").output();
+        if let Ok(o) = output {
+            let kernel = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            if !kernel.is_empty() {
+                return format!("{} ({})", kernel, arch);
+            }
+        }
     }
+
+    // Fallback / Windows path
+    format!("{} {}", os, arch)
 }
 
 fn get_git_branch(cwd: &str) -> Option<String> {

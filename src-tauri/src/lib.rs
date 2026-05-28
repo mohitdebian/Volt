@@ -109,6 +109,12 @@ async fn ai_ask(
         "docker" => ai::prompts::docker_prompt(&prompt_context),
         "troubleshoot" => ai::prompts::troubleshoot_prompt(&context.os, &prompt_context),
         "summarize" => ai::prompts::summarize_prompt(&prompt_context),
+        "workflow" => ai::prompts::workflow_prompt(
+            &context.os,
+            &context.shell,
+            &cwd,
+            &prompt_context,
+        ),
         _ => ai::prompts::command_generation_prompt(
             &context.os,
             &context.shell,

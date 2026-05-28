@@ -46,24 +46,49 @@ impl PtyManager {
             .openpty(size)
             .map_err(|e| format!("Failed to open PTY: {}", e))?;
 
-        // Auto-detect default shell (platform-aware)
-        let shell = if cfg!(target_os = "windows") {
-            std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string())
-        } else {
-            std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
-        };
+        // Auto-detect default shell (cross-platform)
+        #[cfg(target_os = "windows")]
+        let shell = std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".to_string());
+
+        #[cfg(not(target_os = "windows"))]
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
 
         let mut cmd = CommandBuilder::new(&shell);
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
 
+        // Inject shell integration markers for exit code detection
+        // Uses OSC 133 protocol (same as VS Code / iTerm2 shell integration)
+        // Format: \x1b]133;D;{exit_code}\x07
+        #[cfg(not(target_os = "windows"))]
+        {
+            if shell.contains("zsh") {
+                cmd.env("VOLT_SHELL_INTEGRATION", "1");
+                // zsh: use precmd hook via .zshenv injection
+                cmd.env(
+                    "PROMPT_COMMAND",
+                    r#"printf '\e]133;D;%d\a' "$?""#,
+                );
+            } else {
+                // bash: use PROMPT_COMMAND
+                cmd.env(
+                    "PROMPT_COMMAND",
+                    r#"printf '\e]133;D;%d\a' "$?""#,
+                );
+            }
+        }
+
         if let Some(dir) = cwd {
             cmd.cwd(dir);
         } else {
-            // Use the platform-appropriate home directory variable
-            let home_key = if cfg!(target_os = "windows") { "USERPROFILE" } else { "HOME" };
-            if let Ok(home) = std::env::var(home_key) {
-                cmd.cwd(home);
+            #[cfg(target_os = "windows")]
+            let home = std::env::var("USERPROFILE");
+
+            #[cfg(not(target_os = "windows"))]
+            let home = std::env::var("HOME");
+
+            if let Ok(h) = home {
+                cmd.cwd(h);
             }
         }
 
