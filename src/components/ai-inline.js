@@ -355,6 +355,7 @@ const WORKFLOW_KEYWORDS = [
   'set up', 'setup', 'create a project', 'create a new', 'scaffold',
   'install and configure', 'build me', 'initialize', 'init a',
   'deploy', 'migrate', 'bootstrap', 'configure a', 'set me up',
+  'create a', 'build a', 'make a', 'generate a', 'start a', 'project', 'app', 'website',
 ];
 
 function isWorkflowQuery(query) {

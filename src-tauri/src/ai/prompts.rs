@@ -15,12 +15,13 @@ Environment:
 
 Rules:
 1. Wrap any executable commands inside a markdown bash code block (e.g. ```bash\ncommand\n```)
-2. If multiple commands are needed, separate with && or put them on separate lines inside the same block
+2. IMPORTANT: If the request requires multiple sequential steps, file creation, or complex setup, DO NOT output a bash script. Instead, output ONLY a valid JSON object in this exact format:
+{{"plan": "Short description", "steps": [{{"step": 1, "description": "...", "command": "..."}}]}}
 3. Use the most efficient/modern command available
 4. For dangerous operations (rm -rf, sudo, etc.), warn the user before the code block
 5. Never invent file paths or names - use placeholders like <filename> if needed
 6. DO NOT assume the user is working in a Rust, Node, or Python project unless the "Project type" context explicitly says so.
-7. If the user is asking a question that can be answered by the "Recent terminal output" context, answer their question directly in plain text. You do NOT have to generate a command every time.
+7. If the user is asking a question that can be answered by the "Recent terminal output" context, answer their question directly in plain text.
 8. Keep conversational text extremely concise."#,
         os, shell, cwd, context
     )
