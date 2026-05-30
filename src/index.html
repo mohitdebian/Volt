@@ -261,6 +261,13 @@
             <label class="sf"><span>Custom Model Override</span><input type="text" id="settings-custom-model" placeholder="org/model-name" /></label>
             <label class="sf"><span>Temperature — <span id="settings-temp-value">0.3</span></span><input type="range" id="settings-temperature" min="0" max="1" step="0.1" value="0.3" /></label>
           </div>
+          <div class="settings-card">
+            <h4>Features</h4>
+            <label class="sf checkbox-label" style="display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 8px;">
+              <span>Enable Live Error Intelligence (Auto-debug failing commands)</span>
+              <input type="checkbox" id="settings-live-error" checked style="width:16px; height:16px; accent-color: var(--ac1);" />
+            </label>
+          </div>
         </div>
         
         <div id="settings-footer">

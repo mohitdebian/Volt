@@ -214,6 +214,7 @@ function persistToLocalStorage(overrides = {}) {
     max_tokens: config.max_tokens ?? 2048,
     fontSize: store.get('fontSize') || 14,
     execMode: store.get('execMode') || 'agent',
+    liveErrorIntelligence: store.get('liveErrorIntelligence') ?? true,
     ...overrides,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -246,6 +247,11 @@ function loadCurrentSettings() {
       customModel.value = '';
     }
   });
+
+  const liveErrorCheck = document.getElementById('settings-live-error');
+  if (liveErrorCheck) {
+    liveErrorCheck.checked = store.get('liveErrorIntelligence') ?? true;
+  }
 
   // Load execution mode
   const execMode = store.get('execMode') || 'agent';
@@ -293,10 +299,13 @@ async function saveSettings() {
   try {
     console.log('[NexTerm] Saving settings...', { model: config.model, base_url: config.base_url, api_key: config.api_key ? '***set***' : '(empty)' });
 
+    const liveErrorIntelligence = document.getElementById('settings-live-error')?.checked ?? true;
+
     await invoke('update_nim_config', { config });
     store.set('nimConfig', config);
     store.set('fontSize', fontSize);
     store.set('execMode', execMode);
+    store.set('liveErrorIntelligence', liveErrorIntelligence);
     updateBadge(execMode);
 
     // ★ Persist to localStorage so settings survive restart

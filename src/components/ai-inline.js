@@ -104,6 +104,9 @@ export function initInlineAI() {
   // ── Auto-Debug: listen for failed commands ──────────────────
   let autoDebugCooldown = false;
   document.addEventListener('command-failed', async (e) => {
+    // Respect user setting to disable error intelligence
+    if (store.get('liveErrorIntelligence') === false) return;
+
     const { exitCode } = e.detail;
     // Only auto-debug if we're not already debugging
     if (autoDebugCooldown) return;
@@ -143,13 +146,20 @@ export function initInlineAI() {
     const query = `Exit code ${exitCode}. Please analyze the provided terminal output and return JSON.`;
 
     try {
-      const invokeResult = await invoke('ai_ask', { 
+      // Create a 15-second timeout promise to prevent UI hanging if API hangs
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('AI Request Timeout')), 15000);
+      });
+
+      const invokePromise = invoke('ai_ask', { 
         query, 
         cwd, 
         mode: 'error_intelligence', 
         requestId, 
         terminalOutput: errorOutput.slice(-3000) 
       });
+
+      const invokeResult = await Promise.race([invokePromise, timeoutPromise]);
       
       if (invokeResult) {
         try {
@@ -183,6 +193,7 @@ export function initInlineAI() {
       }
     } catch(e) {
       console.error("Error calling ai_ask for intelligence:", e);
+      // Remove card if it failed or timed out
       card.remove();
     }
   });
