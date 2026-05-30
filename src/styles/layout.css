@@ -56,38 +56,51 @@
 .tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 10px;
-  border-radius: 5px;
-  background: transparent;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
   color: var(--t2);
-  font-size: 12px;
+  font-size: 13px;
+  font-family: var(--ui);
   white-space: nowrap;
   max-width: 200px;
   cursor: pointer;
-  transition: all var(--t);
-  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255,255,255,0.02);
 }
-.tab:hover { background: var(--b3); color: var(--t1); }
-.tab.active { background: var(--b3); border-color: var(--br2); color: var(--t1); }
-.tab-icon { color: var(--ac2); flex-shrink: 0; }
-.tab-title { flex: 1; overflow: hidden; text-overflow: ellipsis; font-family: var(--mono); font-size: 11px; }
+.tab:hover { background: rgba(255,255,255,0.06); color: var(--t1); }
+.tab.active { 
+  background: rgba(255,255,255,0.08); 
+  border-color: rgba(255,255,255,0.08); 
+  color: var(--t1); 
+  font-weight: 500;
+}
+.tab-icon { color: rgba(255,255,255,0.6); flex-shrink: 0; }
+.tab.active .tab-icon { color: var(--t1); }
+.tab-dot { 
+  width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0;
+  display: inline-block;
+}
+.tab-title { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .tab-close {
-  width: 14px; height: 14px; border-radius: 3px;
+  width: 16px; height: 16px; border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
-  color: var(--t3); flex-shrink: 0; transition: all var(--t);
-  opacity: 0;
+  color: var(--t3); flex-shrink: 0; transition: all 0.2s ease;
+  opacity: 0.6;
 }
-.tab:hover .tab-close, .tab.active .tab-close { opacity: 1; }
-.tab-close:hover { background: var(--b5); color: var(--err); }
+.tab:hover .tab-close { opacity: 1; }
+.tab-close:hover { background: rgba(255,255,255,0.1); color: var(--t1); }
 
 .tab-action-btn {
-  width: 24px; height: 24px; border-radius: 5px;
+  width: 30px; height: 30px; border-radius: 8px;
   color: var(--t3); display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: all var(--t); margin: 0 4px;
+  flex-shrink: 0; transition: all 0.2s ease; margin: 0 4px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.02);
 }
-.tab-action-btn:hover { background: var(--b3); color: var(--t1); }
+.tab-action-btn:hover { background: rgba(255,255,255,0.08); color: var(--t1); }
 
 /* Hide the Settings tab entirely unless it's active */
 #settings-tab-btn { display: none; }
@@ -154,9 +167,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: transparent;
+  background: rgba(16, 18, 22, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin: 12px;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
 }
 
 #terminals {

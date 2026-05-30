@@ -212,10 +212,7 @@ function renderTabs() {
     const isActive = tab.id === activeId && !isSettingsOpen;
     el.className = `tab${isActive ? ' active' : ''}`;
     el.innerHTML = `
-      <svg class="tab-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
-        <path d="M1 10V3.5a1 1 0 011-1h2.1L5.2 1H11a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1z"
-              stroke="currentColor" stroke-width="1.1"/>
-      </svg>
+      <div class="tab-dot"></div>
       <span class="tab-title">${tab.title}</span>
       <button class="tab-close" data-tab-id="${tab.id}" title="Close">
         <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
