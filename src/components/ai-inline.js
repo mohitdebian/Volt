@@ -304,10 +304,9 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
     unlistenChunk();
     console.error('[Volt AI] ai_ask FAILED:', err);
     
-    contentSpan.innerHTML = `<span style="color:var(--e1)">AI Error: ${err}</span>`;
+    contentSpan.innerHTML = `<span style="color:var(--err)">AI Error: ${err}</span>`;
     
     runningBar?.classList.add('hidden');
-    bar?.classList.remove('hidden');
     document.getElementById('ai-bar-input')?.focus();
   }
 }
@@ -400,43 +399,136 @@ function tryParseWorkflow(text) {
 
 async function executeWorkflow(plan, container, responseArea, term, execMode) {
   const totalSteps = plan.steps.length;
-  
-  // Render plan header
-  container.innerHTML = `
-    <strong style="color:#98c379">📋 Workflow:</strong> ${plan.plan}
-    <span style="color:var(--t3);font-size:0.85em">(${totalSteps} steps)</span>
-    <div class="workflow-steps" style="margin-top:8px"></div>
+  const STATE_ICONS = {
+    queued: '○',
+    running: '◔',
+    completed: '✓',
+    failed: '✕',
+    retrying: '⟳',
+  };
+
+  // Build the workflow visualization container
+  container.innerHTML = '';
+  const wfContainer = document.createElement('div');
+  wfContainer.className = 'wf-container';
+
+  // ── Planning Header ──
+  const header = document.createElement('div');
+  header.className = 'wf-header';
+  header.innerHTML = `
+    <div class="wf-header-icon">⚡</div>
+    <div class="wf-header-text">
+      <h4>${plan.plan}</h4>
+      <span>Planning...</span>
+    </div>
+    <div class="wf-step-count">${totalSteps} steps</div>
   `;
-  const stepsContainer = container.querySelector('.workflow-steps');
-  
-  // Render all steps as pending
+  wfContainer.appendChild(header);
+
+  // ── Progress Bar ──
+  const progressBar = document.createElement('div');
+  progressBar.className = 'wf-progress';
+  progressBar.innerHTML = '<div class="wf-progress-fill"></div>';
+  wfContainer.appendChild(progressBar);
+  const progressFill = progressBar.querySelector('.wf-progress-fill');
+
+  // ── Steps List ──
+  const stepsList = document.createElement('div');
+  stepsList.className = 'wf-steps';
+
+  const stepElements = [];
+
   for (const step of plan.steps) {
     const stepEl = document.createElement('div');
-    stepEl.id = `workflow-step-${step.step}`;
-    stepEl.style.cssText = 'padding:4px 0;color:var(--t3);font-size:0.9em;border-left:2px solid var(--b3);padding-left:8px;margin:4px 0;';
-    stepEl.innerHTML = `⏳ <strong>Step ${step.step}/${totalSteps}:</strong> ${step.description} <code style="font-size:0.85em;color:var(--t3)">${step.command}</code>`;
-    stepsContainer.appendChild(stepEl);
+    stepEl.className = 'wf-step';
+    stepEl.dataset.state = 'queued';
+    stepEl.id = `wf-step-${step.step}`;
+
+    stepEl.innerHTML = `
+      <div class="wf-state">${STATE_ICONS.queued}</div>
+      <div class="wf-step-title">${step.description}</div>
+      <div class="wf-step-cmd">${step.command}</div>
+      <div class="wf-step-details"></div>
+    `;
+
+    // Click to expand/collapse details
+    stepEl.addEventListener('click', () => {
+      const details = stepEl.querySelector('.wf-step-details');
+      details.classList.toggle('expanded');
+    });
+
+    stepsList.appendChild(stepEl);
+    stepElements.push(stepEl);
   }
+
+  wfContainer.appendChild(stepsList);
+  container.appendChild(wfContainer);
   responseArea.scrollTop = responseArea.scrollHeight;
 
-  // Execute steps sequentially
+  // Simulate a brief "planning" phase animation
+  const headerStatus = header.querySelector('.wf-header-text span');
+  await new Promise(r => setTimeout(r, 600));
+
+  // Animate planning checks
+  for (let i = 0; i < Math.min(3, totalSteps); i++) {
+    const planMsgs = ['Analyze project structure', 'Detect dependencies', 'Resolve execution order'];
+    headerStatus.innerHTML = `<span style="color:#22c55e">✓</span> ${planMsgs[i]}`;
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Plan ready — executing...';
+  await new Promise(r => setTimeout(r, 300));
+
+  // Helper to set step state
+  function setStepState(stepEl, state, details = null) {
+    stepEl.dataset.state = state;
+    stepEl.querySelector('.wf-state').textContent = STATE_ICONS[state];
+
+    // Tick animation for completed
+    if (state === 'completed') {
+      const stateEl = stepEl.querySelector('.wf-state');
+      stateEl.style.animation = 'wf-tick-in 0.3s ease forwards';
+    }
+
+    // Add details if provided
+    if (details && details.length > 0) {
+      const detailsEl = stepEl.querySelector('.wf-step-details');
+      detailsEl.innerHTML = '';
+      details.forEach(d => {
+        const line = document.createElement('div');
+        line.className = 'wf-detail-line';
+        if (d.file) {
+          line.innerHTML = `<span class="wf-detail-file">${d.file}</span> <span class="wf-detail-action">${d.action || ''}</span>`;
+        } else {
+          line.innerHTML = `<span class="wf-detail-action">${d.action || d}</span>`;
+        }
+        detailsEl.appendChild(line);
+      });
+      detailsEl.classList.add('expanded');
+    }
+  }
+
+  // ── Execute Steps Sequentially ──
+  let completedCount = 0;
+  let failedCount = 0;
+
   for (const step of plan.steps) {
-    const stepEl = document.getElementById(`workflow-step-${step.step}`);
-    
+    const stepEl = document.getElementById(`wf-step-${step.step}`);
+
     // Mark as running
-    stepEl.style.borderLeftColor = '#61afef';
-    stepEl.style.color = 'var(--t1)';
-    stepEl.innerHTML = `⏳ <strong>Step ${step.step}/${totalSteps}:</strong> ${step.description} <code style="font-size:0.85em">${step.command}</code> <span style="color:#61afef">(running...)</span>`;
+    setStepState(stepEl, 'running');
     responseArea.scrollTop = responseArea.scrollHeight;
 
-    // Check if dangerous
+    // Execute the command
+    let stepFailed = false;
+
     if (execMode === 'agent') {
       let dangerous = false;
-      let reason = `Workflow step ${step.step}: This command looks potentially destructive.`;
+      let reason = `Step ${step.step}: This command may be destructive.`;
       try {
         const risk = await invoke('analyze_command_risk', { command: step.command });
         dangerous = risk.requires_confirmation;
-        if (risk.reason) reason = `Workflow step ${step.step}: ${risk.reason}`;
+        if (risk.reason) reason = `Step ${step.step}: ${risk.reason}`;
       } catch (e) {
         dangerous = isDangerous(step.command);
       }
@@ -457,40 +549,130 @@ async function executeWorkflow(plan, container, responseArea, term, execMode) {
       term.injectCommand(step.command);
     }
 
-    // Wait for the command to finish using the OSC 133 shell integration event
+    // Wait for the command to finish
     if (execMode !== 'ask') {
-      await new Promise((resolve) => {
-        const onFinished = () => {
+      const exitCode = await new Promise((resolve) => {
+        const onFinished = (e) => {
           document.removeEventListener('command-finished', onFinished);
-          resolve();
+          resolve(e.detail?.exitCode ?? 0);
         };
         document.addEventListener('command-finished', onFinished);
       });
+
+      if (exitCode !== 0 && exitCode !== undefined) {
+        stepFailed = true;
+      }
     } else {
-      await new Promise(r => setTimeout(r, 100)); // Just a small tick if we're only injecting
+      await new Promise(r => setTimeout(r, 100));
     }
 
-    // Mark as completed
-    stepEl.style.borderLeftColor = '#98c379';
-    stepEl.innerHTML = `✅ <strong>Step ${step.step}/${totalSteps}:</strong> ${step.description} <code style="font-size:0.85em">${step.command}</code>`;
+    if (stepFailed) {
+      failedCount++;
+      setStepState(stepEl, 'failed', [
+        { action: `exited with non-zero code` },
+      ]);
+    } else {
+      completedCount++;
+
+      // Try to infer details from the command
+      const details = inferStepDetails(step.command, step.description);
+      setStepState(stepEl, 'completed', details);
+    }
+
+    // Update progress
+    const progress = ((completedCount + failedCount) / totalSteps) * 100;
+    progressFill.style.width = `${progress}%`;
+
+    // Update header
+    headerStatus.textContent = `${completedCount}/${totalSteps} completed`;
+
     responseArea.scrollTop = responseArea.scrollHeight;
   }
 
-  // Final summary
+  // ── Final Summary ──
   const summaryEl = document.createElement('div');
-  summaryEl.style.cssText = 'margin-top:8px;padding:6px 10px;background:rgba(152,195,121,0.1);border-radius:4px;color:#98c379;font-size:0.9em;';
-  summaryEl.innerHTML = `✅ <strong>All ${totalSteps} steps completed successfully.</strong>`;
-  stepsContainer.appendChild(summaryEl);
+  const allPassed = failedCount === 0;
+  summaryEl.className = `wf-summary ${allPassed ? 'success' : 'failed'}`;
+
+  if (allPassed) {
+    summaryEl.innerHTML = `<span>✓</span> <strong>All ${totalSteps} steps completed successfully.</strong>`;
+    headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Workflow complete';
+  } else {
+    summaryEl.innerHTML = `<span>✕</span> <strong>${completedCount} passed, ${failedCount} failed.</strong>`;
+    headerStatus.innerHTML = `<span style="color:#ef4444">✕</span> ${failedCount} step${failedCount > 1 ? 's' : ''} failed`;
+  }
+
+  wfContainer.appendChild(summaryEl);
+  progressFill.style.width = '100%';
   responseArea.scrollTop = responseArea.scrollHeight;
 
   // Auto-summarize workflow result
   if (execMode !== 'ask' && plan.steps.length > 0) {
     setTimeout(() => {
       const lastCmd = plan.steps[plan.steps.length - 1].command;
-      const synthQuery = `The workflow "${plan.plan}" just finished. Please briefly analyze the terminal output for the final step: ${lastCmd}. Provide a concise 1-2 sentence summary of the final state or output.`;
+      const synthQuery = `The workflow "${plan.plan}" just finished. ${completedCount}/${totalSteps} steps passed. Please briefly analyze the terminal output for the final step: ${lastCmd}. Provide a concise 1-2 sentence summary.`;
       sendQuery(synthQuery, true);
     }, 2500);
   }
+}
+
+/**
+ * Infer human-readable details from a command for the expandable sub-task view.
+ */
+function inferStepDetails(command, description) {
+  const details = [];
+  const cmd = command.toLowerCase();
+
+  // File creation patterns
+  const touchMatch = command.match(/touch\s+(.+)/);
+  if (touchMatch) {
+    touchMatch[1].split(/\s+/).forEach(f => details.push({ file: f, action: 'created' }));
+  }
+
+  const mkdirMatch = command.match(/mkdir\s+(?:-p\s+)?(.+)/);
+  if (mkdirMatch) {
+    mkdirMatch[1].split(/\s+/).forEach(d => details.push({ file: d + '/', action: 'directory created' }));
+  }
+
+  // Package management
+  if (cmd.includes('npm install') || cmd.includes('npm i ') || cmd.includes('yarn add') || cmd.includes('pnpm add')) {
+    const pkgs = command.replace(/^.*?(install|add)\s+/i, '').split(/\s+/).filter(p => !p.startsWith('-'));
+    pkgs.forEach(p => details.push({ action: `installed ${p}` }));
+    if (details.length === 0) details.push({ action: 'installed dependencies' });
+  }
+
+  if (cmd.includes('npm init') || cmd.includes('npx create')) {
+    details.push({ action: 'initialized project' });
+    details.push({ file: 'package.json', action: 'created' });
+  }
+
+  // Git
+  if (cmd.includes('git init')) {
+    details.push({ file: '.git/', action: 'repository initialized' });
+  }
+  if (cmd.includes('git clone')) {
+    details.push({ action: 'cloned repository' });
+  }
+
+  // Prisma / DB
+  if (cmd.includes('prisma')) {
+    if (cmd.includes('init')) details.push({ file: 'prisma/schema.prisma', action: 'created' });
+    if (cmd.includes('migrate')) details.push({ action: 'ran database migration' });
+    if (cmd.includes('generate')) details.push({ action: 'generated Prisma client' });
+  }
+
+  // Docker
+  if (cmd.includes('docker')) {
+    if (cmd.includes('compose up')) details.push({ action: 'started containers' });
+    if (cmd.includes('build')) details.push({ action: 'built image' });
+  }
+
+  // Fallback: use description
+  if (details.length === 0) {
+    details.push({ action: description || `executed ${command.split(' ')[0]}` });
+  }
+
+  return details;
 }
 
 function initSidebarDynamicContent() {

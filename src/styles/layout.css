@@ -260,6 +260,191 @@
   background: rgba(255,255,255,0.05); padding: 2px 4px; border-radius: 4px; color: var(--ac2); font-family: var(--mono); font-size: 12px;
 }
 
+/* ── Workflow Visualization ─────────── */
+.wf-container {
+  font-family: var(--ui);
+  font-size: 13px;
+}
+
+/* Planning Header */
+.wf-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: rgba(168, 85, 247, 0.06);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.wf-header-icon {
+  width: 20px; height: 20px; border-radius: 6px;
+  background: rgba(168, 85, 247, 0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex-shrink: 0;
+}
+.wf-header-text {
+  flex: 1; min-width: 0;
+}
+.wf-header-text h4 {
+  font-size: 12px; font-weight: 600; color: var(--t1);
+  margin: 0 0 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wf-header-text span {
+  font-size: 10px; color: var(--t3);
+}
+.wf-step-count {
+  font-size: 10px; color: #a855f7; font-weight: 600;
+  background: rgba(168, 85, 247, 0.12); padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* Step list */
+.wf-steps {
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+/* Individual Step */
+.wf-step {
+  position: relative;
+  padding: 8px 12px 8px 32px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  cursor: default;
+}
+.wf-step:hover { background: rgba(255,255,255,0.02); }
+
+/* Vertical connector line */
+.wf-step::before {
+  content: '';
+  position: absolute; left: 15px; top: 26px; bottom: -2px;
+  width: 1px;
+  background: rgba(255,255,255,0.06);
+}
+.wf-step:last-child::before { display: none; }
+
+/* State indicator dot */
+.wf-state {
+  position: absolute; left: 9px; top: 10px;
+  width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; line-height: 1;
+  z-index: 1;
+}
+
+/* Queued ○ */
+.wf-step[data-state="queued"] .wf-state { color: var(--t3); }
+.wf-step[data-state="queued"] .wf-step-title { color: var(--t3); }
+.wf-step[data-state="queued"] .wf-step-cmd { color: rgba(255,255,255,0.15); }
+
+/* Running ◔ */
+.wf-step[data-state="running"] .wf-state {
+  color: #818cf8;
+  animation: wf-pulse 1.2s ease-in-out infinite;
+}
+.wf-step[data-state="running"] .wf-step-title { color: var(--t1); font-weight: 500; }
+.wf-step[data-state="running"] .wf-step-cmd { color: #818cf8; }
+.wf-step[data-state="running"] { background: rgba(129, 140, 248, 0.04); }
+.wf-step[data-state="running"]::before { background: rgba(129, 140, 248, 0.2); }
+
+/* Completed ✓ */
+.wf-step[data-state="completed"] .wf-state { color: #22c55e; }
+.wf-step[data-state="completed"] .wf-step-title { color: var(--t2); }
+.wf-step[data-state="completed"] .wf-step-cmd { color: var(--t3); }
+.wf-step[data-state="completed"]::before { background: rgba(34, 197, 94, 0.15); }
+
+/* Failed ✕ */
+.wf-step[data-state="failed"] .wf-state { color: #ef4444; }
+.wf-step[data-state="failed"] .wf-step-title { color: #ef4444; }
+.wf-step[data-state="failed"] .wf-step-cmd { color: rgba(239,68,68,0.6); }
+
+/* Retrying ⟳ */
+.wf-step[data-state="retrying"] .wf-state {
+  color: #f59e0b;
+  animation: wf-spin 1s linear infinite;
+}
+.wf-step[data-state="retrying"] .wf-step-title { color: #f59e0b; }
+
+.wf-step-title {
+  font-size: 12px; color: var(--t2); margin-bottom: 2px;
+  transition: color 0.3s ease;
+}
+.wf-step-cmd {
+  font-size: 11px; font-family: var(--mono); color: var(--t3);
+  transition: color 0.3s ease;
+}
+
+/* Expandable details */
+.wf-step-details {
+  margin-top: 6px;
+  padding-left: 4px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.wf-step-details.expanded { max-height: 200px; overflow-y: auto; }
+
+.wf-detail-line {
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 11px; color: var(--t3); padding: 1px 0;
+}
+.wf-detail-line::before {
+  content: '└─';
+  font-family: var(--mono); font-size: 10px; color: rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+.wf-detail-line .wf-detail-file {
+  color: #818cf8; font-family: var(--mono);
+}
+.wf-detail-line .wf-detail-action {
+  color: var(--t3);
+}
+
+/* Summary bar */
+.wf-summary {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  display: flex; align-items: center; gap: 8px;
+}
+.wf-summary.success {
+  background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+.wf-summary.failed {
+  background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* Progress bar */
+.wf-progress {
+  height: 2px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 1px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+.wf-progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #818cf8, #a855f7);
+  border-radius: 1px;
+  transition: width 0.5s ease;
+}
+
+/* Animations */
+@keyframes wf-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes wf-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes wf-tick-in {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 /* Input Area */
 .sidebar-input-area { padding: 16px 20px; }
 .ai-input-wrapper {
