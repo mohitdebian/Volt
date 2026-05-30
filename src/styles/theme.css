@@ -44,7 +44,9 @@ html, body {
   flex-direction: column;
   background: rgba(8, 9, 10, 0.70);
   backdrop-filter: blur(30px) saturate(150%);
-  border-radius: 8px; /* For rounded corners on some OS */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
 button, input, select, textarea {
