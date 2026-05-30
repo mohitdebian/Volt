@@ -7,6 +7,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import store from '../state/store.js';
 
 /**
@@ -75,7 +76,7 @@ export async function createTerminal(tabId, container, cwd = null) {
     if (ctrl && e.shiftKey && (e.key === 'V' || e.key === 'v')) return false;
     // Ctrl+C with selection = copy (not SIGINT)
     if (ctrl && (e.key === 'c' || e.key === 'C') && !e.shiftKey && term.hasSelection()) {
-      navigator.clipboard.writeText(term.getSelection());
+      writeText(term.getSelection()).catch(console.error);
       term.clearSelection();
       return false;
     }
@@ -96,7 +97,7 @@ export async function createTerminal(tabId, container, cwd = null) {
     const sel = term.getSelection();
     if (sel) {
       e.preventDefault();
-      navigator.clipboard.writeText(sel);
+      writeText(sel).catch(console.error);
       term.clearSelection();
     }
   });
@@ -253,7 +254,7 @@ export async function createTerminal(tabId, container, cwd = null) {
           const lineText = term.buffer.active.getLine(i);
           if (lineText) output += lineText.translateToString(true) + '\n';
         }
-        navigator.clipboard.writeText(output.trim());
+        writeText(output.trim()).catch(console.error);
         
         element.innerHTML = `<span style="color:#98c379;font-size:12px">✓</span>`;
         setTimeout(() => { element.innerHTML = copyIcon; }, 1500);
