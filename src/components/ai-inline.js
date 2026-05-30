@@ -196,8 +196,8 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
     const cwd = await getCwd();
     let mode = modeOverride || (hidden ? 'summarize' : (store.get('aiMode') || 'command'));
     
-    // Auto-detect workflow-type prompts
-    if (!modeOverride && !hidden && isWorkflowQuery(query)) {
+    // Fully agentic: all visible queries route to the Agent Loop
+    if (!hidden) {
       mode = 'workflow';
     }
     
@@ -372,22 +372,8 @@ function escapeForTerminal(str) {
   return str.replace(/[\x00-\x1f]/g, '');
 }
 
-// ── Workflow Detection ────────────────────────────────────
-const WORKFLOW_KEYWORDS = [
-  'set up', 'setup', 'create a project', 'create a new', 'scaffold',
-  'install and configure', 'build me', 'initialize', 'init a',
-  'deploy', 'migrate', 'bootstrap', 'configure a', 'set me up',
-  'create a', 'build a', 'make a', 'generate a', 'start a', 'project', 'app', 'website',
-  'fix this', 'debug', 'troubleshoot', 'resolve', 'fix the error', 'why is it failing'
-];
-
-function isWorkflowQuery(query) {
-  const lower = query.toLowerCase();
-  const kwMatch = WORKFLOW_KEYWORDS.some(kw => lower.includes(kw));
-  // If it's longer than 2 words and starts with a verb, it's often a workflow
-  const isComplex = query.split(' ').length > 2 && /^(build|create|make|write|generate|setup|init|fix|debug|troubleshoot|resolve)/.test(lower);
-  return kwMatch || isComplex;
-}
+// ── Workflow Detection (Removed) ─────────────────────────
+// Volt is now fully agentic. All interactive queries route through the Agent Loop.
 
 function tryParseWorkflow(text) {
   try {
@@ -636,11 +622,11 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
 
     } else if (action.action === 'done') {
       isDone = true;
-      headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Workflow complete';
+      headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Task complete';
       
       const summaryEl = document.createElement('div');
       summaryEl.className = 'wf-summary success';
-      summaryEl.innerHTML = `<span>✓</span> <strong>${action.summary || 'Task completed successfully.'}</strong>`;
+      summaryEl.innerHTML = `<span>✓</span> <span>${action.summary || 'Task completed successfully.'}</span>`;
       wfContainer.appendChild(summaryEl);
 
     } else if (action.action === 'error') {
