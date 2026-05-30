@@ -167,6 +167,51 @@ async fn ai_ask(
 }
 
 #[tauri::command]
+async fn ai_agent_step(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    messages: Vec<ChatMessage>,
+    cwd: String,
+    request_id: String,
+) -> Result<String, String> {
+    let mut context = TerminalContext::gather(&cwd);
+    let prompt_context = context.to_prompt_context();
+
+    let system_prompt = ai::prompts::agent_step_prompt(
+        &context.os,
+        &context.shell,
+        &cwd,
+        &prompt_context,
+    );
+
+    let mut full_messages = vec![
+        ChatMessage {
+            role: "system".to_string(),
+            content: system_prompt,
+        }
+    ];
+    full_messages.extend(messages);
+
+    let config = {
+        let client = state
+            .nim_client
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
+        client.config.clone()
+    };
+
+    if config.api_key.is_empty() {
+        return Err("API key not configured.".to_string());
+    }
+
+    let nim = NimClient::new(config);
+    // Use stream_completion so the UI can still show the typing animation if it wants to
+    let result = nim.stream_completion(&app, &request_id, full_messages).await?;
+
+    Ok(result)
+}
+
+#[tauri::command]
 fn analyze_command_risk(command: String) -> CommandRisk {
     analyze_command(&command)
 }
@@ -307,6 +352,7 @@ pub fn run() {
             kill_pty,
             // AI
             ai_ask,
+            ai_agent_step,
             analyze_command_risk,
             update_nim_config,
             get_nim_config,

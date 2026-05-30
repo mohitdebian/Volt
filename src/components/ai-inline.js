@@ -207,6 +207,13 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
       terminalOutput = term.getText();
     }
     
+    // If it's a workflow, route to the real Agent Loop
+    if (mode === 'workflow') {
+      unlistenChunk();
+      contentSpan.innerHTML = '';
+      return await startAgentLoop(query, aiDiv, responseArea, term, execMode, cwd);
+    }
+    
     const invokeResult = await invoke('ai_ask', { query, cwd, mode, requestId, terminalOutput });
     console.log('[Volt AI] ai_ask invoke returned successfully. Result length:', invokeResult?.length);
     
@@ -397,8 +404,7 @@ function tryParseWorkflow(text) {
   return null;
 }
 
-async function executeWorkflow(plan, container, responseArea, term, execMode) {
-  const totalSteps = plan.steps.length;
+async function startAgentLoop(query, container, responseArea, term, execMode, cwd) {
   const STATE_ICONS = {
     queued: '○',
     running: '◔',
@@ -418,79 +424,59 @@ async function executeWorkflow(plan, container, responseArea, term, execMode) {
   header.innerHTML = `
     <div class="wf-header-icon">⚡</div>
     <div class="wf-header-text">
-      <h4>${plan.plan}</h4>
-      <span>Planning...</span>
+      <h4>Agent Loop</h4>
+      <span>Initializing...</span>
     </div>
-    <div class="wf-step-count">${totalSteps} steps</div>
+    <div class="wf-step-count">0 steps</div>
   `;
   wfContainer.appendChild(header);
-
-  // ── Progress Bar ──
-  const progressBar = document.createElement('div');
-  progressBar.className = 'wf-progress';
-  progressBar.innerHTML = '<div class="wf-progress-fill"></div>';
-  wfContainer.appendChild(progressBar);
-  const progressFill = progressBar.querySelector('.wf-progress-fill');
 
   // ── Steps List ──
   const stepsList = document.createElement('div');
   stepsList.className = 'wf-steps';
+  wfContainer.appendChild(stepsList);
+  container.appendChild(wfContainer);
+  
+  const headerStatus = header.querySelector('.wf-header-text span');
+  const stepCount = header.querySelector('.wf-step-count');
 
-  const stepElements = [];
-
-  for (const step of plan.steps) {
+  // Helper to append a step to the UI
+  let stepCounter = 0;
+  function addUiStep(title, cmd, initialState = 'running') {
+    stepCounter++;
+    stepCount.textContent = `${stepCounter} steps`;
+    
     const stepEl = document.createElement('div');
     stepEl.className = 'wf-step';
-    stepEl.dataset.state = 'queued';
-    stepEl.id = `wf-step-${step.step}`;
+    stepEl.dataset.state = initialState;
+    stepEl.id = `wf-step-${stepCounter}`;
 
     stepEl.innerHTML = `
-      <div class="wf-state">${STATE_ICONS.queued}</div>
-      <div class="wf-step-title">${step.description}</div>
-      <div class="wf-step-cmd">${step.command}</div>
+      <div class="wf-state">${STATE_ICONS[initialState]}</div>
+      <div class="wf-step-title">${title}</div>
+      <div class="wf-step-cmd">${cmd}</div>
       <div class="wf-step-details"></div>
     `;
 
-    // Click to expand/collapse details
     stepEl.addEventListener('click', () => {
       const details = stepEl.querySelector('.wf-step-details');
       details.classList.toggle('expanded');
     });
 
     stepsList.appendChild(stepEl);
-    stepElements.push(stepEl);
+    responseArea.scrollTop = responseArea.scrollHeight;
+    return stepEl;
   }
 
-  wfContainer.appendChild(stepsList);
-  container.appendChild(wfContainer);
-  responseArea.scrollTop = responseArea.scrollHeight;
-
-  // Simulate a brief "planning" phase animation
-  const headerStatus = header.querySelector('.wf-header-text span');
-  await new Promise(r => setTimeout(r, 600));
-
-  // Animate planning checks
-  for (let i = 0; i < Math.min(3, totalSteps); i++) {
-    const planMsgs = ['Analyze project structure', 'Detect dependencies', 'Resolve execution order'];
-    headerStatus.innerHTML = `<span style="color:#22c55e">✓</span> ${planMsgs[i]}`;
-    await new Promise(r => setTimeout(r, 400));
-  }
-
-  headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Plan ready — executing...';
-  await new Promise(r => setTimeout(r, 300));
-
-  // Helper to set step state
   function setStepState(stepEl, state, details = null) {
     stepEl.dataset.state = state;
     stepEl.querySelector('.wf-state').textContent = STATE_ICONS[state];
 
-    // Tick animation for completed
     if (state === 'completed') {
       const stateEl = stepEl.querySelector('.wf-state');
       stateEl.style.animation = 'wf-tick-in 0.3s ease forwards';
     }
 
-    // Add details if provided
     if (details && details.length > 0) {
       const detailsEl = stepEl.querySelector('.wf-step-details');
       detailsEl.innerHTML = '';
@@ -508,112 +494,162 @@ async function executeWorkflow(plan, container, responseArea, term, execMode) {
     }
   }
 
-  // ── Execute Steps Sequentially ──
-  let completedCount = 0;
-  let failedCount = 0;
+  // ── Agent Loop ──
+  let messages = [
+    { role: 'user', content: query }
+  ];
+  let loopCount = 0;
+  let isDone = false;
 
-  for (const step of plan.steps) {
-    const stepEl = document.getElementById(`wf-step-${step.step}`);
+  headerStatus.innerHTML = '<span style="color:#818cf8">Agent running...</span>';
 
-    // Mark as running
-    setStepState(stepEl, 'running');
-    responseArea.scrollTop = responseArea.scrollHeight;
-
-    // Execute the command
-    let stepFailed = false;
-
-    if (execMode === 'agent') {
-      let dangerous = false;
-      let reason = `Step ${step.step}: This command may be destructive.`;
-      try {
-        const risk = await invoke('analyze_command_risk', { command: step.command });
-        dangerous = risk.requires_confirmation;
-        if (risk.reason) reason = `Step ${step.step}: ${risk.reason}`;
-      } catch (e) {
-        dangerous = isDangerous(step.command);
-      }
-
-      if (dangerous) {
-        await new Promise((resolve) => {
-          showConfirm(step.command, reason, () => {
-            term.writeCommand(step.command);
-            resolve();
-          });
-        });
-      } else {
-        term.writeCommand(step.command);
-      }
-    } else if (execMode !== 'ask') {
-      term.writeCommand(step.command);
-    } else {
-      term.injectCommand(step.command);
+  while (!isDone && loopCount < 20) {
+    loopCount++;
+    const requestId = `req-${++requestCounter}-${Date.now()}`;
+    
+    let aiResponse = "";
+    try {
+      aiResponse = await invoke('ai_agent_step', { 
+        messages, 
+        cwd, 
+        requestId 
+      });
+    } catch (e) {
+      const errEl = addUiStep('Agent Error', 'Backend failure', 'failed');
+      setStepState(errEl, 'failed', [{ action: e.toString() }]);
+      break;
     }
 
-    // Wait for the command to finish
-    if (execMode !== 'ask') {
+    messages.push({ role: 'assistant', content: aiResponse });
+
+    // Parse action
+    const actionMatch = aiResponse.match(/```(?:json)?\r?\n([\s\S]*?)```/);
+    if (!actionMatch) {
+      // AI didn't provide valid JSON action, force it to correct itself
+      const errEl = addUiStep('Format Error', 'Invalid response format', 'failed');
+      setStepState(errEl, 'failed', [{ action: 'Expected JSON action block' }]);
+      messages.push({ role: 'user', content: 'SYSTEM: You must respond with exactly ONE JSON action block wrapped in ```json.' });
+      continue;
+    }
+
+    let action;
+    try {
+      action = JSON.parse(actionMatch[1].trim());
+    } catch (e) {
+      const errEl = addUiStep('Parse Error', 'Invalid JSON payload', 'failed');
+      setStepState(errEl, 'failed', [{ action: e.toString() }]);
+      messages.push({ role: 'user', content: `SYSTEM: Failed to parse JSON: ${e.toString()}` });
+      continue;
+    }
+
+    // Execute Action
+    if (action.action === 'run_command') {
+      const stepEl = addUiStep(action.description || 'Running command', action.command, 'running');
+      term.writeCommand(action.command);
+
+      // Wait for finish
+      let output = "";
       const exitCode = await new Promise((resolve) => {
+        let captured = "";
+        const onData = (e) => { captured += e.detail; };
         const onFinished = (e) => {
+          document.removeEventListener('terminal-data', onData);
           document.removeEventListener('command-finished', onFinished);
+          output = captured;
           resolve(e.detail?.exitCode ?? 0);
         };
+        document.addEventListener('terminal-data', onData);
         document.addEventListener('command-finished', onFinished);
       });
 
-      if (exitCode !== 0 && exitCode !== undefined) {
-        stepFailed = true;
+      if (exitCode !== 0) {
+        setStepState(stepEl, 'failed', [{ action: `Exited with code ${exitCode}` }]);
+        messages.push({ 
+          role: 'user', 
+          content: `SYSTEM: Command failed with exit code ${exitCode}.\nOutput:\n${output.slice(-2000)}`
+        });
+      } else {
+        const details = inferStepDetails(action.command, action.description);
+        setStepState(stepEl, 'completed', details);
+        messages.push({ 
+          role: 'user', 
+          content: `SYSTEM: Command succeeded.\nOutput:\n${output.slice(-2000)}`
+        });
       }
+
+    } else if (action.action === 'create_file') {
+      const stepEl = addUiStep(action.description || `Create ${action.path}`, `write ${action.path}`, 'running');
+      try {
+        const base64Content = btoa(unescape(encodeURIComponent(action.content)));
+        const cmd = `echo "${base64Content}" | base64 -d > "${action.path}"`;
+        term.writeCommand(cmd);
+        
+        await new Promise((resolve) => {
+          const onFinished = () => {
+            document.removeEventListener('command-finished', onFinished);
+            resolve();
+          };
+          document.addEventListener('command-finished', onFinished);
+        });
+
+        setStepState(stepEl, 'completed', [{ file: action.path, action: 'created successfully' }]);
+        messages.push({ role: 'user', content: `SYSTEM: File ${action.path} created successfully.` });
+      } catch (e) {
+        setStepState(stepEl, 'failed', [{ action: `Failed to write: ${e}` }]);
+        messages.push({ role: 'user', content: `SYSTEM: Failed to create file: ${e}` });
+      }
+
+    } else if (action.action === 'read_file') {
+      const stepEl = addUiStep(action.description || `Read ${action.path}`, `cat ${action.path}`, 'running');
+      term.writeCommand(`cat "${action.path}"`);
+      
+      let output = "";
+      await new Promise((resolve) => {
+        let captured = "";
+        const onData = (e) => { captured += e.detail; };
+        const onFinished = () => {
+          document.removeEventListener('terminal-data', onData);
+          document.removeEventListener('command-finished', onFinished);
+          output = captured;
+          resolve();
+        };
+        document.addEventListener('terminal-data', onData);
+        document.addEventListener('command-finished', onFinished);
+      });
+
+      setStepState(stepEl, 'completed', [{ file: action.path, action: 'read successfully' }]);
+      messages.push({ role: 'user', content: `SYSTEM: File contents of ${action.path}:\n${output.slice(-3000)}` });
+
+    } else if (action.action === 'done') {
+      isDone = true;
+      headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Workflow complete';
+      
+      const summaryEl = document.createElement('div');
+      summaryEl.className = 'wf-summary success';
+      summaryEl.innerHTML = `<span>✓</span> <strong>${action.summary || 'Task completed successfully.'}</strong>`;
+      wfContainer.appendChild(summaryEl);
+
+    } else if (action.action === 'error') {
+      isDone = true;
+      headerStatus.innerHTML = '<span style="color:#ef4444">✕</span> Workflow aborted';
+      
+      const summaryEl = document.createElement('div');
+      summaryEl.className = 'wf-summary failed';
+      summaryEl.innerHTML = `<span>✕</span> <strong>${action.message || 'Task failed.'}</strong>`;
+      wfContainer.appendChild(summaryEl);
     } else {
-      await new Promise(r => setTimeout(r, 100));
+      messages.push({ role: 'user', content: `SYSTEM: Unknown action type '${action.action}'.` });
     }
-
-    if (stepFailed) {
-      failedCount++;
-      setStepState(stepEl, 'failed', [
-        { action: `exited with non-zero code` },
-      ]);
-    } else {
-      completedCount++;
-
-      // Try to infer details from the command
-      const details = inferStepDetails(step.command, step.description);
-      setStepState(stepEl, 'completed', details);
-    }
-
-    // Update progress
-    const progress = ((completedCount + failedCount) / totalSteps) * 100;
-    progressFill.style.width = `${progress}%`;
-
-    // Update header
-    headerStatus.textContent = `${completedCount}/${totalSteps} completed`;
-
-    responseArea.scrollTop = responseArea.scrollHeight;
   }
 
-  // ── Final Summary ──
-  const summaryEl = document.createElement('div');
-  const allPassed = failedCount === 0;
-  summaryEl.className = `wf-summary ${allPassed ? 'success' : 'failed'}`;
-
-  if (allPassed) {
-    summaryEl.innerHTML = `<span>✓</span> <strong>All ${totalSteps} steps completed successfully.</strong>`;
-    headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Workflow complete';
-  } else {
-    summaryEl.innerHTML = `<span>✕</span> <strong>${completedCount} passed, ${failedCount} failed.</strong>`;
-    headerStatus.innerHTML = `<span style="color:#ef4444">✕</span> ${failedCount} step${failedCount > 1 ? 's' : ''} failed`;
+  if (!isDone) {
+    headerStatus.innerHTML = '<span style="color:#f59e0b">⚠</span> Maximum steps reached';
   }
 
-  wfContainer.appendChild(summaryEl);
-  progressFill.style.width = '100%';
-  responseArea.scrollTop = responseArea.scrollHeight;
-
-  // Auto-summarize workflow result
-  if (execMode !== 'ask' && plan.steps.length > 0) {
-    setTimeout(() => {
-      const lastCmd = plan.steps[plan.steps.length - 1].command;
-      const synthQuery = `The workflow "${plan.plan}" just finished. ${completedCount}/${totalSteps} steps passed. Please briefly analyze the terminal output for the final step: ${lastCmd}. Provide a concise 1-2 sentence summary.`;
-      sendQuery(synthQuery, true);
-    }, 2500);
-  }
+  // Restore input
+  const runningBar = document.getElementById('ai-running-bar');
+  if (runningBar) runningBar.classList.add('hidden');
+  document.getElementById('ai-bar-input')?.focus();
 }
 
 /**
