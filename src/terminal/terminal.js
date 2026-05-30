@@ -244,6 +244,9 @@ export async function createTerminal(tabId, container, cwd = null) {
 
   const unlistenOutput = await listen(`pty-output-${sessionId}`, (event) => {
     const data = event.payload;
+    
+    // Broadcast raw terminal data so the AI workflow engine can capture command output
+    document.dispatchEvent(new CustomEvent('terminal-data', { detail: data }));
 
     // ── Autopilot: Auto-inject sudo password when prompted ──
     if (store.get('execMode') === 'autopilot' && sudoPromptRe.test(data)) {

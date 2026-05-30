@@ -734,7 +734,8 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       aiResponse = await invoke('ai_agent_step', {
         messages,
         cwd,
-        requestId
+        requestId,
+        terminalOutput: (loopCount === 1 && term) ? term.getText().slice(-4000) : null
       });
     } catch (e) {
       const errEl = addUiStep('Agent Error', 'Backend failure', 'failed');
@@ -788,18 +789,20 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
         document.addEventListener('command-finished', onFinished);
       });
 
+      const cleanOutput = output.replace(/\x1b\[[0-9;]*m/g, '').replace(/\x1b\][0-9;]*[^\x07]*\x07/g, '').trim();
+
       if (exitCode !== 0) {
         setStepState(stepEl, 'failed', [{ action: `Exited with code ${exitCode}` }]);
         messages.push({
           role: 'user',
-          content: `SYSTEM: Command failed with exit code ${exitCode}.\nOutput:\n${output.slice(-2000)}`
+          content: `SYSTEM: Command failed with exit code ${exitCode}.\nOutput:\n${cleanOutput.slice(-3000)}`
         });
       } else {
         const details = inferStepDetails(action.command, action.description);
         setStepState(stepEl, 'completed', details);
         messages.push({
           role: 'user',
-          content: `SYSTEM: Command succeeded.\nOutput:\n${output.slice(-2000)}`
+          content: `SYSTEM: Command succeeded.\nOutput:\n${cleanOutput.slice(-3000)}`
         });
       }
 

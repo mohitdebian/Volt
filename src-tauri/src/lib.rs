@@ -173,6 +173,7 @@ async fn ai_agent_step(
     messages: Vec<ChatMessage>,
     cwd: String,
     request_id: String,
+    terminal_output: Option<String>,
 ) -> Result<String, String> {
     // Only gather full context on the FIRST step (1 message = just the user's initial prompt).
     // Subsequent steps already have all context in the conversation history,
@@ -180,7 +181,12 @@ async fn ai_agent_step(
     let is_first_step = messages.len() <= 1;
 
     let system_prompt = if is_first_step {
-        let context = TerminalContext::gather(&cwd);
+        let mut context = TerminalContext::gather(&cwd);
+        if let Some(out) = terminal_output {
+            if !out.trim().is_empty() {
+                context.terminal_history = Some(out);
+            }
+        }
         let prompt_context = context.to_prompt_context();
         ai::prompts::agent_step_prompt(
             &context.os,
