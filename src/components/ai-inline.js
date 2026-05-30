@@ -106,6 +106,10 @@ export function initInlineAI() {
   document.addEventListener('command-failed', async (e) => {
     // Respect user setting to disable error intelligence
     if (store.get('liveErrorIntelligence') === false) return;
+    
+    // Do NOT trigger auto-debug if an agent workflow is actively running
+    const bannerRunning = document.getElementById('agent-banner-running');
+    if (bannerRunning && !bannerRunning.classList.contains('hidden')) return;
 
     const { exitCode } = e.detail;
     // Only auto-debug if we're not already debugging
@@ -435,6 +439,29 @@ function showConfirm(command, reason, onConfirm) {
   cancelBtn?.addEventListener('click', onCancel);
   runBtn?.addEventListener('click', onRun);
   document.getElementById('confirm-backdrop')?.addEventListener('click', onCancel, { once: true });
+}
+
+function showConfirmAsync(command, reason) {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('confirm-dialog');
+    if (!dialog) { resolve(true); return; }
+    document.getElementById('confirm-message').textContent = reason;
+    document.getElementById('confirm-command').textContent = command;
+    dialog.classList.remove('hidden');
+
+    const cleanup = () => {
+      dialog.classList.add('hidden');
+      cancelBtn.removeEventListener('click', onCancel);
+      runBtn.removeEventListener('click', onRun);
+    };
+    const cancelBtn = document.getElementById('confirm-cancel');
+    const runBtn    = document.getElementById('confirm-run');
+    const onCancel  = () => { cleanup(); resolve(false); };
+    const onRun     = () => { cleanup(); resolve(true); };
+    cancelBtn?.addEventListener('click', onCancel);
+    runBtn?.addEventListener('click', onRun);
+    document.getElementById('confirm-backdrop')?.addEventListener('click', onCancel, { once: true });
+  });
 }
 
 async function getCwd() {
@@ -798,6 +825,21 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
 
     // Execute Action
     if (action.action === 'run_command') {
+      // ── Security Check ──
+      const risk = await invoke('analyze_command_risk', { command: action.command });
+      if (risk.level === 'High' || risk.level === 'Critical' || action.command.includes('sudo')) {
+        const approved = await showConfirmAsync(action.command, `Agent wants to run a high-risk command. Allow?`);
+        if (!approved) {
+          const stepEl = addUiStep(action.description || 'Running command', action.command, 'failed', action.thought);
+          setStepState(stepEl, 'failed', [{ action: `User denied execution.` }]);
+          messages.push({
+            role: 'user',
+            content: `SYSTEM: The user DENIED execution of '${action.command}' because it requires approval. Do NOT run this command again. Find a safe alternative or stop gracefully.`
+          });
+          continue;
+        }
+      }
+
       const stepEl = addUiStep(action.description || 'Running command', action.command, 'running', action.thought);
       term.writeCommand(action.command);
 

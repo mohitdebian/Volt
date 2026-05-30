@@ -244,6 +244,7 @@ Available actions:
 CRITICAL RULES:
 - RESPOND WITH ONLY RAW JSON. No introductory text. No markdown formatting. No backticks.
 - OBSERVE BEFORE ACTING: After every command, you WILL receive the terminal output. READ IT CAREFULLY. If it shows an error (e.g., "cd: no such file or directory"), you MUST fix it in the next step — do NOT blindly proceed.
+- NEVER use `sudo -n`. The user is actively watching the terminal and CAN type their sudo password if prompted. Just use normal `sudo` without the `-n` flag!
 - NEVER default to Rust/Tauri. The user wants standard web tech unless they say otherwise.
 - If a path fails (e.g., "desktop" not found), try the case-corrected version (e.g., "Desktop") or use `ls` to discover the right name.
 - For create_file, use ABSOLUTE PATHS so the file goes to the right place regardless of the shell's current directory.
