@@ -563,16 +563,19 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       const stepEl = addUiStep(action.description || 'Running command', action.command, 'running', action.thought);
       term.writeCommand(action.command);
 
-      // Wait for finish
+      // Wait for finish with a small buffer to capture all terminal-data events
       let output = "";
       const exitCode = await new Promise((resolve) => {
         let captured = "";
         const onData = (e) => { captured += e.detail; };
         const onFinished = (e) => {
-          document.removeEventListener('terminal-data', onData);
-          document.removeEventListener('command-finished', onFinished);
-          output = captured;
-          resolve(e.detail?.exitCode ?? 0);
+          // Small delay to let any remaining terminal-data events arrive
+          setTimeout(() => {
+            document.removeEventListener('terminal-data', onData);
+            document.removeEventListener('command-finished', onFinished);
+            output = captured;
+            resolve(e.detail?.exitCode ?? 0);
+          }, 150);
         };
         document.addEventListener('terminal-data', onData);
         document.addEventListener('command-finished', onFinished);
