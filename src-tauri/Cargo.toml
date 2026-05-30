@@ -1,6 +1,6 @@
 [package]
 name = "volt"
-version = "0.1.0"
+version = "0.5.1"
 description = "Lightweight AI-powered terminal with NVIDIA NIM"
 authors = ["mohit"]
 edition = "2021"

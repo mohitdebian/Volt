@@ -1,6 +1,6 @@
 {
   "name": "volt-terminal",
-  "version": "0.2.0",
+  "version": "0.5.1",
   "description": "An AI-powered, agentic terminal built with Tauri and Rust.",
   "author": "Mohit",
   "license": "MIT",
