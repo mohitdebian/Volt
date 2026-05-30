@@ -7,7 +7,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { writeText, readText } from '@tauri-apps/plugin-clipboard-manager';
 import store from '../state/store.js';
 
 /**
@@ -98,14 +98,119 @@ export async function createTerminal(tabId, container, cwd = null) {
 
   term.open(pane);
 
-  // Right-click to copy selected text (must be after term.open so term.element exists)
-  term.element?.addEventListener('contextmenu', (e) => {
-    const sel = term.getSelection();
-    if (sel) {
-      e.preventDefault();
-      writeText(sel).catch(console.error);
-      term.clearSelection();
-    }
+  // Custom Context Menu on Right-Click
+  term.element?.addEventListener('contextmenu', async (e) => {
+    e.preventDefault();
+    
+    // Remove existing context menu if any
+    const existing = document.getElementById('volt-context-menu');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'volt-context-menu';
+    menu.style.position = 'fixed';
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+    menu.style.background = 'rgba(26, 26, 26, 0.95)';
+    menu.style.backdropFilter = 'blur(10px)';
+    menu.style.border = '1px solid rgba(255,255,255,0.1)';
+    menu.style.borderRadius = '8px';
+    menu.style.padding = '4px';
+    menu.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+    menu.style.zIndex = '9999';
+    menu.style.fontFamily = 'var(--ui)';
+    menu.style.fontSize = '12px';
+    menu.style.minWidth = '140px';
+    menu.style.color = 'var(--t1)';
+
+    const createMenuItem = (label, shortcut, icon, onClick, disabled = false) => {
+      const item = document.createElement('div');
+      item.style.display = 'flex';
+      item.style.alignItems = 'center';
+      item.style.justifyContent = 'space-between';
+      item.style.padding = '6px 8px';
+      item.style.borderRadius = '4px';
+      item.style.cursor = disabled ? 'default' : 'pointer';
+      item.style.opacity = disabled ? '0.5' : '1';
+      
+      const left = document.createElement('div');
+      left.style.display = 'flex';
+      left.style.alignItems = 'center';
+      left.style.gap = '8px';
+      left.innerHTML = `<span style="opacity:0.7">${icon}</span> <span>${label}</span>`;
+      
+      const right = document.createElement('div');
+      right.style.opacity = '0.5';
+      right.style.fontSize = '10px';
+      right.textContent = shortcut;
+      
+      item.appendChild(left);
+      item.appendChild(right);
+      
+      if (!disabled) {
+        item.onmouseenter = () => { item.style.background = 'rgba(255,255,255,0.08)'; };
+        item.onmouseleave = () => { item.style.background = 'transparent'; };
+        item.onclick = (ev) => {
+          ev.stopPropagation();
+          onClick();
+          menu.remove();
+        };
+      }
+      
+      return item;
+    };
+
+    const hasSelection = term.hasSelection();
+    
+    menu.appendChild(createMenuItem('Copy', 'Ctrl+Shift+C', '⎘', () => {
+      if (hasSelection) {
+        writeText(term.getSelection()).catch(console.error);
+        term.clearSelection();
+      }
+    }, !hasSelection));
+
+    menu.appendChild(createMenuItem('Paste', 'Ctrl+Shift+V', '📋', async () => {
+      try {
+        const text = await readText();
+        if (text) {
+          invoke('write_pty', { sessionId, data: text }).catch(console.error);
+        }
+      } catch (err) {
+        console.error('Failed to read clipboard', err);
+      }
+    }));
+    
+    // Add separator
+    const sep = document.createElement('div');
+    sep.style.height = '1px';
+    sep.style.background = 'rgba(255,255,255,0.1)';
+    sep.style.margin = '4px 0';
+    menu.appendChild(sep);
+
+    menu.appendChild(createMenuItem('Select All', 'Ctrl+Shift+A', '⬚', () => {
+      term.selectAll();
+    }));
+
+    document.body.appendChild(menu);
+
+    // Keep menu in viewport
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) menu.style.left = `${window.innerWidth - rect.width - 10}px`;
+    if (rect.bottom > window.innerHeight) menu.style.top = `${window.innerHeight - rect.height - 10}px`;
+
+    // Close on outside click
+    const closeMenu = (ev) => {
+      if (!menu.contains(ev.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+        document.removeEventListener('contextmenu', closeMenu);
+      }
+    };
+    // Delay adding the click listener slightly so this right-click doesn't instantly close it
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+      document.addEventListener('contextmenu', closeMenu);
+    }, 10);
   });
 
   // Small delay to let DOM settle before fitting
