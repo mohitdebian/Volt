@@ -273,6 +273,33 @@ fn agent_write_file(cwd: String, path: String, content: String) -> Result<(), St
 }
 
 #[tauri::command]
+fn agent_read_file(cwd: String, path: String) -> Result<String, String> {
+    use std::path::Path;
+    use std::fs;
+
+    let expanded_path = if path.starts_with("~/") {
+        if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+            path.replacen("~", &home, 1)
+        } else {
+            path
+        }
+    } else {
+        path
+    };
+
+    let target_path = if Path::new(&expanded_path).is_absolute() {
+        std::path::PathBuf::from(expanded_path)
+    } else {
+        Path::new(&cwd).join(expanded_path)
+    };
+
+    match fs::read_to_string(&target_path) {
+        Ok(content) => Ok(content),
+        Err(e) => Err(format!("Failed to read file at {}: {}", target_path.display(), e)),
+    }
+}
+
+#[tauri::command]
 fn update_nim_config(state: State<'_, AppState>, config: NimConfig) -> Result<(), String> {
     let mut client = state
         .nim_client
@@ -410,6 +437,7 @@ pub fn run() {
             ai_ask,
             ai_agent_step,
             agent_write_file,
+            agent_read_file,
             analyze_command_risk,
             update_nim_config,
             get_nim_config,

@@ -600,25 +600,18 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       }
 
     } else if (action.action === 'read_file') {
-      const stepEl = addUiStep(action.description || `Read ${action.path}`, `cat ${action.path}`, 'running', action.thought);
-      term.writeCommand(`cat "${action.path}"`);
-      
-      let output = "";
-      await new Promise((resolve) => {
-        let captured = "";
-        const onData = (e) => { captured += e.detail; };
-        const onFinished = () => {
-          document.removeEventListener('terminal-data', onData);
-          document.removeEventListener('command-finished', onFinished);
-          output = captured;
-          resolve();
-        };
-        document.addEventListener('terminal-data', onData);
-        document.addEventListener('command-finished', onFinished);
-      });
-
-      setStepState(stepEl, 'completed', [{ file: action.path, action: 'read successfully' }]);
-      messages.push({ role: 'user', content: `SYSTEM: File contents of ${action.path}:\n${output.slice(-3000)}` });
+      const stepEl = addUiStep(action.description || `Read ${action.path}`, `read ${action.path}`, 'running', action.thought);
+      try {
+        const output = await invoke('agent_read_file', { 
+          cwd, 
+          path: action.path 
+        });
+        setStepState(stepEl, 'completed', [{ file: action.path, action: 'read successfully' }]);
+        messages.push({ role: 'user', content: `SYSTEM: File contents of ${action.path}:\n${output.slice(-3000)}` });
+      } catch (e) {
+        setStepState(stepEl, 'failed', [{ action: `Failed to read: ${e}` }]);
+        messages.push({ role: 'user', content: `SYSTEM: Failed to read file: ${e}` });
+      }
 
     } else if (action.action === 'done') {
       isDone = true;
