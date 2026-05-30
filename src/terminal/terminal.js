@@ -71,15 +71,21 @@ export async function createTerminal(tabId, container, cwd = null) {
     if (ctrl && e.key === 'w') return false;  // Ctrl+W → close tab
     if (ctrl && e.key === ',') return false;  // Ctrl+, → settings
     if (ctrl && e.shiftKey && e.key === 'P') return false; // palette
-    // Allow Ctrl+Shift+C for copy and Ctrl+Shift+V for paste
-    if (ctrl && e.shiftKey && (e.key === 'C' || e.key === 'c')) return false;
-    if (ctrl && e.shiftKey && (e.key === 'V' || e.key === 'v')) return false;
-    // Ctrl+C with selection = copy (not SIGINT)
-    if (ctrl && (e.key === 'c' || e.key === 'C') && !e.shiftKey && term.hasSelection()) {
-      writeText(term.getSelection()).catch(console.error);
-      term.clearSelection();
+    
+    // Ctrl+Shift+C → Copy to clipboard using Tauri native API
+    if (ctrl && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+      if (e.type === 'keydown' && term.hasSelection()) {
+        writeText(term.getSelection()).catch(console.error);
+        term.clearSelection();
+      }
       return false;
     }
+    
+    // Ctrl+Shift+V → Let browser/OS handle paste
+    if (ctrl && e.shiftKey && (e.key === 'V' || e.key === 'v')) return false;
+
+    // By default, Ctrl+C (without shift) is passed to xterm (returns true), 
+    // which sends a SIGINT (\x03) to the running process.
     return true; // all other keys → xterm handles normally
   });
 
