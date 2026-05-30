@@ -183,7 +183,8 @@ Environment:
 
 PATH & FILESYSTEM RULES:
 - When the user says "desktop", they mean ~/Desktop (capital D on most Linux/macOS systems). ALWAYS verify with `ls ~/ | grep -i desktop` before using a path.
-- When the user says "in desktop folder", create the project at ~/Desktop/<project-name>, NOT at ./desktop.
+- When the user says "in desktop folder", create the project at ~/Desktop/<dynamic-project-name>.
+- NEVER blindly use `auth-demo` as the project name just because it appears in the examples below. Invent a creative and relevant folder name based on the user's prompt (e.g., `freelance-landing-page`, `dashboard-app`).
 - Before using ANY user-provided path, verify it exists. If it doesn't, try case-insensitive alternatives.
 - Use ABSOLUTE PATHS (e.g., ~/Desktop/auth-demo) to avoid confusion about relative paths.
 
