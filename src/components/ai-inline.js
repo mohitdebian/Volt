@@ -442,7 +442,7 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
 
   // Helper to append a step to the UI
   let stepCounter = 0;
-  function addUiStep(title, cmd, initialState = 'running') {
+  function addUiStep(title, cmd, initialState = 'running', thought = null) {
     stepCounter++;
     stepCount.textContent = `${stepCounter} steps`;
     
@@ -451,9 +451,12 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     stepEl.dataset.state = initialState;
     stepEl.id = `wf-step-${stepCounter}`;
 
+    const thoughtHtml = thought ? `<div class="wf-step-thought" style="color:var(--t2); font-size: 0.85em; margin-bottom: 4px;">🤔 ${thought}</div>` : '';
+
     stepEl.innerHTML = `
       <div class="wf-state">${STATE_ICONS[initialState]}</div>
       <div class="wf-step-title">${title}</div>
+      ${thoughtHtml}
       <div class="wf-step-cmd">${cmd}</div>
       <div class="wf-step-details"></div>
     `;
@@ -522,29 +525,36 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
 
     messages.push({ role: 'assistant', content: aiResponse });
 
-    // Parse action
+    // Parse action robustly
+    let actionStr = aiResponse.trim();
+    // If wrapped in backticks, extract it
     const actionMatch = aiResponse.match(/```(?:json)?\r?\n([\s\S]*?)```/);
-    if (!actionMatch) {
-      // AI didn't provide valid JSON action, force it to correct itself
-      const errEl = addUiStep('Format Error', 'Invalid response format', 'failed');
-      setStepState(errEl, 'failed', [{ action: 'Expected JSON action block' }]);
-      messages.push({ role: 'user', content: 'SYSTEM: You must respond with exactly ONE JSON action block wrapped in ```json.' });
-      continue;
+    if (actionMatch) {
+      actionStr = actionMatch[1].trim();
+    } else {
+      // Sometimes it outputs raw JSON without backticks, but maybe some text before/after
+      const firstBrace = aiResponse.indexOf('{');
+      const lastBrace = aiResponse.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        actionStr = aiResponse.substring(firstBrace, lastBrace + 1).trim();
+      }
     }
 
     let action;
     try {
-      action = JSON.parse(actionMatch[1].trim());
+      action = JSON.parse(actionStr);
     } catch (e) {
-      const errEl = addUiStep('Parse Error', 'Invalid JSON payload', 'failed');
-      setStepState(errEl, 'failed', [{ action: e.toString() }]);
-      messages.push({ role: 'user', content: `SYSTEM: Failed to parse JSON: ${e.toString()}` });
+      const errEl = addUiStep('Format Error', 'Invalid response format', 'failed');
+      setStepState(errEl, 'failed', [{ action: `Could not parse JSON. Error: ${e.message}\nPayload: ${actionStr.substring(0, 100)}...` }]);
+      messages.push({ role: 'user', content: 'SYSTEM: You MUST respond with ONLY a valid JSON object. No other text. Fix the JSON syntax.' });
       continue;
     }
+    
+    const thoughtText = action.thought ? `🤔 ${action.thought}` : '';
 
     // Execute Action
     if (action.action === 'run_command') {
-      const stepEl = addUiStep(action.description || 'Running command', action.command, 'running');
+      const stepEl = addUiStep(action.description || 'Running command', action.command, 'running', action.thought);
       term.writeCommand(action.command);
 
       // Wait for finish
@@ -578,7 +588,7 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       }
 
     } else if (action.action === 'create_file') {
-      const stepEl = addUiStep(action.description || `Create ${action.path}`, `write ${action.path}`, 'running');
+      const stepEl = addUiStep(action.description || `Create ${action.path}`, `write ${action.path}`, 'running', action.thought);
       try {
         const base64Content = btoa(unescape(encodeURIComponent(action.content)));
         const cmd = `echo "${base64Content}" | base64 -d > "${action.path}"`;
@@ -600,7 +610,7 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       }
 
     } else if (action.action === 'read_file') {
-      const stepEl = addUiStep(action.description || `Read ${action.path}`, `cat ${action.path}`, 'running');
+      const stepEl = addUiStep(action.description || `Read ${action.path}`, `cat ${action.path}`, 'running', action.thought);
       term.writeCommand(`cat "${action.path}"`);
       
       let output = "";

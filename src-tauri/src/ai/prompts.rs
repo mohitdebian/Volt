@@ -184,45 +184,63 @@ You will receive the conversation history including:
 - Your previous actions and their results (terminal output)
 - The current state of the project
 
-You MUST respond with EXACTLY ONE JSON action block wrapped in ```json ... ```.
-You may include a brief 1-sentence thought BEFORE the JSON block.
+You MUST respond with EXACTLY ONE JSON action block and absolutely NOTHING else. Do NOT wrap it in markdown block quotes (```json), just output the raw JSON object.
+
+Every response MUST follow this schema:
+{{
+  "thought": "A brief explanation of what you are doing and why based on the last output.",
+  "action": "one of: run_command, create_file, read_file, done, error",
+  // ... action-specific fields ...
+}}
 
 Available actions:
 
 1. Run a shell command:
-```json
-{{"action": "run_command", "command": "npm install express", "description": "Install Express.js"}}
-```
+{{
+  "thought": "I need to initialize a new Node project.",
+  "action": "run_command",
+  "command": "npm init -y",
+  "description": "Initialize npm project"
+}}
 
-2. Create/write a file:
-```json
-{{"action": "create_file", "path": "src/index.js", "content": "const express = require('express');\n...", "description": "Create Express server entry point"}}
-```
+2. Create/write a file (use this instead of echo/cat for files):
+{{
+  "thought": "Creating the main server file.",
+  "action": "create_file",
+  "path": "src/index.js",
+  "content": "const express = require('express');\n...",
+  "description": "Create Express server entry point"
+}}
 
 3. Read a file to understand it:
-```json
-{{"action": "read_file", "path": "package.json", "description": "Check current dependencies"}}
-```
+{{
+  "thought": "I need to see what scripts exist in package.json.",
+  "action": "read_file",
+  "path": "package.json",
+  "description": "Check current dependencies"
+}}
 
 4. Mark task as complete:
-```json
-{{"action": "done", "summary": "Created a fullstack auth system with JWT, bcrypt, and login/signup routes."}}
-```
+{{
+  "thought": "All tests passed and the server is running.",
+  "action": "done",
+  "summary": "Created a fullstack auth system with JWT, bcrypt, and login/signup routes."
+}}
 
 5. Report an unrecoverable error:
-```json
-{{"action": "error", "message": "Cannot proceed because Node.js is not installed."}}
-```
+{{
+  "thought": "The user lacks permissions and sudo failed.",
+  "action": "error",
+  "message": "Cannot proceed because sudo access is required."
+}}
 
 CRITICAL RULES:
-- ALWAYS respond with exactly ONE action per turn. Never multiple.
-- After running a command, you will see its terminal output. Use it to decide the next step.
-- If a command fails, analyze the error and either fix it or try a different approach. Do NOT just give up.
-- When creating files, ALWAYS use the create_file action. Do NOT use echo or cat heredocs.
-- For create_file, the "content" field must be the complete file contents as a string (use \n for newlines).
+- RESPOND WITH ONLY RAW JSON. No introductory text. No markdown formatting.
+- If a command fails with "No such file or directory", DO NOT keep trying to read it. Create the directory (`mkdir -p`) or the file, or use `ls` to figure out where you are.
 - Be autonomous. Do not ask the user clarifying questions. Make professional decisions yourself.
-- Maximum 20 actions per task. If you need more, consolidate steps.
-- When you're done, ALWAYS end with the "done" action and a brief summary."#,
+- After running a command, you will see its terminal output. Use it to decide the next step.
+- If an installation fails, try a different approach or fix the error.
+- For create_file, the "content" field must be the complete file contents as a string. Ensure paths exist first (run `mkdir -p` beforehand if needed)."#,
         os, shell, cwd, context
     )
 }
