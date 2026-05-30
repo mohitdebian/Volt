@@ -82,15 +82,6 @@ export async function createTerminal(tabId, container, cwd = null) {
     return true; // all other keys → xterm handles normally
   });
 
-  // Right-click to copy selected text
-  term.element?.addEventListener('contextmenu', (e) => {
-    const sel = term.getSelection();
-    if (sel) {
-      e.preventDefault();
-      navigator.clipboard.writeText(sel);
-      term.clearSelection();
-    }
-  });
 
   // Create DOM element for this terminal pane
   const pane = document.createElement('div');
@@ -99,6 +90,16 @@ export async function createTerminal(tabId, container, cwd = null) {
   container.appendChild(pane);
 
   term.open(pane);
+
+  // Right-click to copy selected text (must be after term.open so term.element exists)
+  term.element?.addEventListener('contextmenu', (e) => {
+    const sel = term.getSelection();
+    if (sel) {
+      e.preventDefault();
+      navigator.clipboard.writeText(sel);
+      term.clearSelection();
+    }
+  });
 
   // Small delay to let DOM settle before fitting
   await new Promise(r => setTimeout(r, 50));
