@@ -234,6 +234,89 @@ fn analyze_command_risk(command: String) -> CommandRisk {
 }
 
 #[tauri::command]
+async fn create_git_checkpoint(cwd: String) -> Result<String, String> {
+    use std::process::Command;
+    use std::fs;
+    use std::path::Path;
+
+    // Verify it's a git repo
+    let status = Command::new("git").args(["rev-parse", "--is-inside-work-tree"]).current_dir(&cwd).output();
+    if status.is_err() || !status.unwrap().status.success() {
+        return Err("Not a Git repository. Checkpoints are only supported in Git projects.".to_string());
+    }
+
+    let volt_dir = Path::new(&cwd).join(".volt");
+    if !volt_dir.exists() {
+        let _ = fs::create_dir_all(&volt_dir);
+    }
+    
+    // Add all untracked files to staging so they are captured by diff --cached if needed, 
+    // OR we can just use `git diff HEAD` to capture everything, but untracked files need to be added to be tracked.
+    // Actually, a safer checkpoint is: git add -A, then git commit to a temporary detached branch!
+    // But that modifies the user's index (staging area).
+    
+    // Simplest robust checkpoint without losing staging state:
+    // Create a patch of ALL changes (staged and unstaged)
+    let patch_path = volt_dir.join("checkpoint.patch");
+    
+    let mut diff = Command::new("git")
+        .args(["diff", "HEAD"]) // Gets both staged and unstaged changes against the last commit
+        .current_dir(&cwd)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+        
+    // Save untracked files list so we know what to restore if needed
+    let untracked = Command::new("git")
+        .args(["ls-files", "--others", "--exclude-standard"])
+        .current_dir(&cwd)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+        
+    if let Err(e) = fs::write(&patch_path, diff) {
+        return Err(format!("Failed to write patch: {}", e));
+    }
+    
+    let untracked_path = volt_dir.join("checkpoint_untracked.txt");
+    let _ = fs::write(&untracked_path, untracked);
+
+    Ok("Checkpoint created successfully.".to_string())
+}
+
+#[tauri::command]
+async fn restore_git_checkpoint(cwd: String) -> Result<String, String> {
+    use std::process::Command;
+    use std::path::Path;
+
+    let volt_dir = Path::new(&cwd).join(".volt");
+    let patch_path = volt_dir.join("checkpoint.patch");
+    // let _untracked_path = volt_dir.join("checkpoint_untracked.txt");
+
+    if !patch_path.exists() {
+        return Err("No checkpoint found to restore.".to_string());
+    }
+
+    // 1. Reset all tracked files to HEAD
+    let _ = Command::new("git").args(["reset", "--hard", "HEAD"]).current_dir(&cwd).output();
+    
+    // 2. Clean any files created by the agent (removes all untracked files)
+    let _ = Command::new("git").args(["clean", "-fd"]).current_dir(&cwd).output();
+    
+    // 3. Apply the patch to restore the user's uncommitted changes (staged+unstaged)
+    let patch_status = Command::new("git")
+        .args(["apply", ".volt/checkpoint.patch"])
+        .current_dir(&cwd)
+        .output();
+        
+    if let Err(e) = patch_status {
+        return Err(format!("Failed to apply rollback patch: {}", e));
+    }
+
+    Ok("Rollback complete. Your files have been restored.".to_string())
+}
+
+#[tauri::command]
 fn agent_write_file(cwd: String, path: String, content: String) -> Result<(), String> {
     use std::path::Path;
     use std::fs;
@@ -448,6 +531,8 @@ pub fn run() {
             analyze_command_risk,
             update_nim_config,
             get_nim_config,
+            create_git_checkpoint,
+            restore_git_checkpoint,
             // Memory
             save_command,
             get_frequent_commands,

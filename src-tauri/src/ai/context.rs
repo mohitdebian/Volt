@@ -10,6 +10,8 @@ pub struct TerminalContext {
     pub git_branch: Option<String>,
     pub git_status: Option<String>,
     pub git_diff_summary: Option<String>,
+    pub git_uncommitted_diff: Option<String>,
+    pub git_log: Option<String>,
     pub project_type: Option<String>,
     pub file_tree: Option<String>,
     pub environment: Option<String>,
@@ -30,6 +32,8 @@ impl TerminalContext {
         let git_branch = get_git_branch(cwd);
         let git_status = get_git_status(cwd);
         let git_diff_summary = get_git_diff_summary(cwd);
+        let git_uncommitted_diff = get_git_uncommitted_diff(cwd);
+        let git_log = get_git_log(cwd);
         let project_type = detect_project_type(cwd);
         let file_tree = get_file_tree(cwd);
         let environment = detect_environment();
@@ -41,6 +45,8 @@ impl TerminalContext {
             git_branch,
             git_status,
             git_diff_summary,
+            git_uncommitted_diff,
+            git_log,
             project_type,
             file_tree,
             environment,
@@ -61,7 +67,13 @@ impl TerminalContext {
             parts.push(format!("- Git status:\n{}", status));
         }
         if let Some(ref diff) = self.git_diff_summary {
-            parts.push(format!("- Recent changes (git diff --stat):\n{}", diff));
+            parts.push(format!("- Last commit changes:\n{}", diff));
+        }
+        if let Some(ref log) = self.git_log {
+            parts.push(format!("- Recent commits:\n{}", log));
+        }
+        if let Some(ref diff) = self.git_uncommitted_diff {
+            parts.push(format!("- Uncommitted changes (git diff):\n```diff\n{}\n```", diff));
         }
         if let Some(ref project) = self.project_type {
             parts.push(format!("- Project type: {}", project));
@@ -168,6 +180,53 @@ fn get_git_diff_summary(cwd: &str) -> Option<String> {
             let start = if lines.len() > 10 { lines.len() - 10 } else { 0 };
             Some(lines[start..].join("\n"))
         }
+    } else {
+        None
+    }
+}
+
+/// Get the actual uncommitted diff (staged + unstaged)
+fn get_git_uncommitted_diff(cwd: &str) -> Option<String> {
+    let mut diff = Command::new("git")
+        .args(["diff", "--cached"])
+        .current_dir(cwd)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+        
+    let unstaged = Command::new("git")
+        .args(["diff"])
+        .current_dir(cwd)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+        
+    diff.push_str(&unstaged);
+
+    let trimmed = diff.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    
+    // Truncate to avoid massive token usage on huge diffs (max ~8000 chars)
+    if trimmed.len() > 8000 {
+        Some(format!("{}\n...[Diff truncated due to length]", &trimmed[..8000]))
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+/// Get recent commit history
+fn get_git_log(cwd: &str) -> Option<String> {
+    let output = Command::new("git")
+        .args(["log", "--oneline", "-n", "5"])
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let log = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if log.is_empty() { None } else { Some(log) }
     } else {
         None
     }

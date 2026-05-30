@@ -515,6 +515,8 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     bannerIdle?.classList.remove('hidden');
     agentControls?.classList.add('hidden');
     idleActions?.classList.remove('hidden');
+    const rbBtn = document.getElementById('agent-rollback-btn');
+    if (rbBtn) rbBtn.style.display = 'none';
   }
 
   // Update Current Step card in sidebar
@@ -582,8 +584,25 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
   };
   const onStop = () => { agentStopped = true; };
 
+  const rollbackBtn = document.getElementById('agent-rollback-btn');
+  const onRollback = async () => {
+    try {
+      const res = await invoke('restore_git_checkpoint', { cwd });
+      alert(res);
+      onStop();
+      if (rollbackBtn) rollbackBtn.style.display = 'none';
+      if (bannerRunning) {
+        const h3 = bannerRunning.querySelector('h3');
+        if (h3) h3.textContent = 'Agent rolled back';
+      }
+    } catch(e) {
+      alert(e);
+    }
+  };
+
   pauseBtn?.addEventListener('click', onPause);
   stopBtn?.addEventListener('click', onStop);
+  rollbackBtn?.addEventListener('click', onRollback);
 
   // ── Build Sidebar Workflow Visualization ──
   container.innerHTML = '';
@@ -698,6 +717,15 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       });
       detailsEl.classList.add('expanded');
     }
+  }
+
+  // ── Create Checkpoint before starting ──
+  try {
+    const cpRes = await invoke('create_git_checkpoint', { cwd });
+    addUiStep('Checkpoint Created', cpRes, 'completed');
+    if (rollbackBtn) rollbackBtn.style.display = 'flex';
+  } catch(e) {
+    console.log('[Volt] Checkpoint skipped:', e);
   }
 
   // ── Agent Loop ──
@@ -948,7 +976,9 @@ function initSidebarDynamicContent() {
     'qa-run-cmd': 'Write a command to ',
     'qa-explain-err': 'Explain the recent error in the terminal output.',
     'qa-search-docs': 'Search documentation for ',
-    'qa-optimize': 'Optimize the code shown in the terminal output.'
+    'qa-optimize': 'Optimize the code shown in the terminal output.',
+    'qa-git-commit': 'Review my uncommitted git changes and write a professional, conventional commit message for me. Then give me the git commit command to execute it.',
+    'qa-git-review': 'Act as a senior engineer and review the uncommitted git changes in this project. Provide a concise, constructive code review.'
   };
 
   for (const [id, promptText] of Object.entries(qaActions)) {
