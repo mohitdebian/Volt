@@ -210,7 +210,7 @@ Available actions:
 {{
   "thought": "Creating the main Express server file with auth routes.",
   "action": "create_file",
-  "path": "/home/user/Desktop/auth-demo/src/index.js",
+  "path": "~/Desktop/auth-demo/src/index.js",
   "content": "const express = require('express');\n...",
   "description": "Create Express server entry point"
 }}

@@ -232,10 +232,20 @@ fn agent_write_file(cwd: String, path: String, content: String) -> Result<(), St
     use std::path::Path;
     use std::fs;
 
-    let target_path = if Path::new(&path).is_absolute() {
-        std::path::PathBuf::from(path)
+    let expanded_path = if path.starts_with("~/") {
+        if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+            path.replacen("~", &home, 1)
+        } else {
+            path
+        }
     } else {
-        Path::new(&cwd).join(path)
+        path
+    };
+
+    let target_path = if Path::new(&expanded_path).is_absolute() {
+        std::path::PathBuf::from(expanded_path)
+    } else {
+        Path::new(&cwd).join(expanded_path)
     };
 
     // Safety: prevent the agent from overwriting Volt's own source files
