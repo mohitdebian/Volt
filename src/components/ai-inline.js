@@ -16,11 +16,10 @@ import { getActiveTerminal } from '../terminal/tabs.js';
 let requestCounter = 0;
 
 export function initInlineAI() {
-  const bar   = document.getElementById('ai-bar');
   const input = document.getElementById('ai-bar-input');
   const send  = document.getElementById('ai-bar-send');
 
-  if (!bar || !input) return;
+  if (!input) return;
 
   // Send on Enter
   input.addEventListener('keydown', e => {
@@ -46,7 +45,6 @@ export function initInlineAI() {
   // React to state changes
   store.subscribe('aiModeActive', active => {
     const container = document.getElementById('volt-ai-sidebar');
-    const bar = document.getElementById('ai-bar');
     const input = document.getElementById('ai-bar-input');
     const runningBar = document.getElementById('ai-running-bar');
     const resizer = document.getElementById('panel-resizer');
@@ -55,16 +53,14 @@ export function initInlineAI() {
     resizer?.classList.toggle('hidden', !active);
 
     if (active) {
-      bar?.classList.remove('hidden');
       runningBar?.classList.add('hidden');
       input.value = '';
       input.focus();
     } else {
-      bar?.classList.add('hidden');
       runningBar?.classList.add('hidden');
       getActiveTerminal()?.focus();
     }
-    // Refit terminal since bar changed height
+    // Refit terminal since layout changed
     setTimeout(() => getActiveTerminal()?.fit(), 100);
   });
   
