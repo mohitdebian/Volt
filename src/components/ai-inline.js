@@ -378,13 +378,14 @@ const WORKFLOW_KEYWORDS = [
   'install and configure', 'build me', 'initialize', 'init a',
   'deploy', 'migrate', 'bootstrap', 'configure a', 'set me up',
   'create a', 'build a', 'make a', 'generate a', 'start a', 'project', 'app', 'website',
+  'fix this', 'debug', 'troubleshoot', 'resolve', 'fix the error', 'why is it failing'
 ];
 
 function isWorkflowQuery(query) {
   const lower = query.toLowerCase();
   const kwMatch = WORKFLOW_KEYWORDS.some(kw => lower.includes(kw));
-  // If it's longer than 3 words and starts with a verb, it's often a workflow
-  const isComplex = query.split(' ').length > 3 && /^(build|create|make|write|generate|setup|init)/.test(lower);
+  // If it's longer than 2 words and starts with a verb, it's often a workflow
+  const isComplex = query.split(' ').length > 2 && /^(build|create|make|write|generate|setup|init|fix|debug|troubleshoot|resolve)/.test(lower);
   return kwMatch || isComplex;
 }
 
