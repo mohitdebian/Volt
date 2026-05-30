@@ -70,7 +70,26 @@ export async function createTerminal(tabId, container, cwd = null) {
     if (ctrl && e.key === 'w') return false;  // Ctrl+W → close tab
     if (ctrl && e.key === ',') return false;  // Ctrl+, → settings
     if (ctrl && e.shiftKey && e.key === 'P') return false; // palette
+    // Allow Ctrl+Shift+C for copy and Ctrl+Shift+V for paste
+    if (ctrl && e.shiftKey && (e.key === 'C' || e.key === 'c')) return false;
+    if (ctrl && e.shiftKey && (e.key === 'V' || e.key === 'v')) return false;
+    // Ctrl+C with selection = copy (not SIGINT)
+    if (ctrl && (e.key === 'c' || e.key === 'C') && !e.shiftKey && term.hasSelection()) {
+      navigator.clipboard.writeText(term.getSelection());
+      term.clearSelection();
+      return false;
+    }
     return true; // all other keys → xterm handles normally
+  });
+
+  // Right-click to copy selected text
+  term.element?.addEventListener('contextmenu', (e) => {
+    const sel = term.getSelection();
+    if (sel) {
+      e.preventDefault();
+      navigator.clipboard.writeText(sel);
+      term.clearSelection();
+    }
   });
 
   // Create DOM element for this terminal pane
