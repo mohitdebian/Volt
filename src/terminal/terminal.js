@@ -97,8 +97,22 @@ export async function createTerminal(tabId, container, cwd = null) {
   let lastExitCode = 0;
   const osc133Re = /\x1b\]133;D;(\d+)\x07/;
   
+  // Sudo password prompt patterns (covers Linux, macOS, and various sudo configs)
+  const sudoPromptRe = /\[sudo\] password for |Password:|password for .*:/i;
+
   const unlistenOutput = await listen(`pty-output-${sessionId}`, (event) => {
     const data = event.payload;
+
+    // ── Autopilot: Auto-inject sudo password when prompted ──
+    if (store.get('execMode') === 'autopilot' && sudoPromptRe.test(data)) {
+      const sudoPassword = store.get('sudoPassword');
+      if (sudoPassword) {
+        // Small delay to ensure the password prompt is fully rendered before injection
+        setTimeout(() => {
+          invoke('write_pty', { sessionId, data: sudoPassword + '\n' }).catch(console.error);
+        }, 100);
+      }
+    }
     
     // Check for OSC 133 exit code marker
     const match = osc133Re.exec(data);

@@ -154,9 +154,13 @@
             <div id="exec-mode-selector">
               <button class="em-btn" data-mode="ask">💬 Ask</button>
               <button class="em-btn active" data-mode="agent">🤖 Agent</button>
-              <button class="em-btn" data-mode="full">⚡ Full</button>
+              <button class="em-btn" data-mode="autopilot">🚀 Autopilot</button>
             </div>
           </label>
+          <div id="autopilot-settings" class="hidden" style="margin-top: 8px; padding: 10px 12px; background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 8px;">
+            <p style="font-size: 0.8em; color: #eab308; margin: 0 0 8px 0;">⚠️ Autopilot mode runs everything autonomously, including <code>sudo</code> commands. Your password is stored <strong>only in memory</strong> and is never written to disk.</p>
+            <label class="sf"><span>Sudo Password</span><input type="password" id="settings-sudo-password" placeholder="Enter your sudo password…" /></label>
+          </div>
         </div>
         
         <div class="settings-actions">

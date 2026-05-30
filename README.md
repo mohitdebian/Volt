@@ -95,7 +95,7 @@ In the Settings (`Ctrl+,`), you can change how autonomous the AI is:
 
 - 💬 **Ask Mode:** The AI will only answer questions or propose commands. You must manually copy and paste them.
 - 🤖 **Agent Mode (Recommended):** The AI proposes commands. Safe commands are automatically executed. If a command is destructive (e.g., deleting files, installing root packages), Volt's Rust AST engine intercepts it and asks for your explicit permission.
-- ⚡ **Full Access:** The AI autonomously executes everything it thinks is right. **Use with extreme caution.**
+- 🚀 **Autopilot Mode:** The AI autonomously executes everything without any confirmations. It also automatically handles `sudo` password prompts by injecting your stored password (kept in memory only, never saved to disk). Perfect for unattended workflows. **Use with extreme caution.**
 
 ### Auto-Summarization Magic
 When you ask Volt to run a command (e.g., "check my ram usage"), it will:

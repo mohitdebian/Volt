@@ -89,6 +89,11 @@ export function initSettings() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.em-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      // Show/hide autopilot settings
+      const autopilotSettings = document.getElementById('autopilot-settings');
+      if (autopilotSettings) {
+        autopilotSettings.classList.toggle('hidden', btn.dataset.mode !== 'autopilot');
+      }
     });
   });
 
@@ -96,8 +101,8 @@ export function initSettings() {
   const badge = document.getElementById('exec-mode-badge');
   if (badge) {
     badge.addEventListener('click', () => {
-      const modes = ['ask', 'agent', 'full'];
-      const labels = { ask: '💬 Ask', agent: '🤖 Agent', full: '⚡ Full Access' };
+      const modes = ['ask', 'agent', 'autopilot'];
+      const labels = { ask: '💬 Ask', agent: '🤖 Agent', autopilot: '🚀 Autopilot' };
       const currentMode = store.get('execMode') || 'agent';
       const nextIdx = (modes.indexOf(currentMode) + 1) % modes.length;
       const newMode = modes[nextIdx];
@@ -107,6 +112,11 @@ export function initSettings() {
       document.querySelectorAll('.em-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.mode === newMode);
       });
+      // Show/hide autopilot settings
+      const autopilotSettings = document.getElementById('autopilot-settings');
+      if (autopilotSettings) {
+        autopilotSettings.classList.toggle('hidden', newMode !== 'autopilot');
+      }
       // Persist
       persistToLocalStorage({ execMode: newMode });
     });
@@ -129,7 +139,7 @@ export function initSettings() {
 function updateBadge(mode) {
   const badge = document.getElementById('exec-mode-badge');
   if (!badge) return;
-  const labels = { ask: '💬 Ask', agent: '🤖 Agent', full: '⚡ Full Access' };
+  const labels = { ask: '💬 Ask', agent: '🤖 Agent', autopilot: '🚀 Autopilot' };
   badge.className = `exec-badge ${mode}`;
   badge.textContent = labels[mode] || labels.agent;
 }
@@ -159,8 +169,10 @@ async function loadPersistedSettings() {
 
       if (saved.fontSize) store.set('fontSize', saved.fontSize);
       if (saved.execMode) {
-        store.set('execMode', saved.execMode);
-        updateBadge(saved.execMode);
+        // Migrate legacy 'full' mode to 'autopilot'
+        const execMode = saved.execMode === 'full' ? 'autopilot' : saved.execMode;
+        store.set('execMode', execMode);
+        updateBadge(execMode);
       }
 
       console.log('[NexTerm] Settings synced to backend ✓');
@@ -229,6 +241,18 @@ function loadCurrentSettings() {
     b.classList.toggle('active', b.dataset.mode === execMode);
   });
   updateBadge(execMode);
+
+  // Show/hide autopilot settings
+  const autopilotSettings = document.getElementById('autopilot-settings');
+  if (autopilotSettings) {
+    autopilotSettings.classList.toggle('hidden', execMode !== 'autopilot');
+  }
+
+  // Load sudo password from memory (never from disk)
+  const sudoInput = document.getElementById('settings-sudo-password');
+  if (sudoInput) {
+    sudoInput.value = store.get('sudoPassword') || '';
+  }
 }
 
 async function saveSettings() {
@@ -249,6 +273,10 @@ async function saveSettings() {
   // Get active execution mode
   const activeMode = document.querySelector('.em-btn.active');
   const execMode = activeMode ? activeMode.dataset.mode : 'agent';
+
+  // Save sudo password to memory ONLY (never persisted to localStorage)
+  const sudoPassword = document.getElementById('settings-sudo-password')?.value || '';
+  store.set('sudoPassword', sudoPassword);
 
   try {
     console.log('[NexTerm] Saving settings...', { model: config.model, base_url: config.base_url, api_key: config.api_key ? '***set***' : '(empty)' });

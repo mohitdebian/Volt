@@ -269,7 +269,7 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
             }, 2500);
           };
           
-          if (execMode === 'full') {
+          if (execMode === 'autopilot') {
             runIt();
           } else if (execMode === 'agent') {
             invoke('analyze_command_risk', { command: combinedCmd }).then((risk) => {
