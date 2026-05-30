@@ -73,16 +73,28 @@ export function initSettings() {
   });
 
   // Settings nav tab switching
-  document.querySelectorAll('.snav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const section = item.dataset.section;
-      document.querySelectorAll('.snav-item').forEach(n => n.classList.remove('active'));
-      item.classList.add('active');
-      document.querySelectorAll('#settings-content .settings-section').forEach(s => {
-        s.classList.toggle('active', s.dataset.section === section);
-      });
+  document.querySelectorAll('.snav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.dataset.tab;
+      document.querySelectorAll('.snav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      document.querySelectorAll('.settings-tab-content').forEach(t => t.classList.add('hidden'));
+      const activeTab = document.getElementById(`settings-tab-${tabId}`);
+      if (activeTab) activeTab.classList.remove('hidden');
+
+      // Update header title
+      const headerTitle = document.getElementById('settings-tab-title');
+      if (headerTitle) {
+        headerTitle.textContent = tabId === 'general' ? 'General Settings' : 'AI Engine Connection';
+      }
     });
   });
+
+  // Close modal btn
+  document.getElementById('settings-close-btn')?.addEventListener('click', () => store.set('settingsOpen', false));
+  document.getElementById('settings-backdrop')?.addEventListener('click', () => store.set('settingsOpen', false));
+
 
   // Execution mode buttons
   document.querySelectorAll('.em-btn').forEach(btn => {
