@@ -590,16 +590,10 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     } else if (action.action === 'create_file') {
       const stepEl = addUiStep(action.description || `Create ${action.path}`, `write ${action.path}`, 'running', action.thought);
       try {
-        const base64Content = btoa(unescape(encodeURIComponent(action.content)));
-        const cmd = `echo "${base64Content}" | base64 -d > "${action.path}"`;
-        term.writeCommand(cmd);
-        
-        await new Promise((resolve) => {
-          const onFinished = () => {
-            document.removeEventListener('command-finished', onFinished);
-            resolve();
-          };
-          document.addEventListener('command-finished', onFinished);
+        await invoke('agent_write_file', { 
+          cwd, 
+          path: action.path, 
+          content: action.content 
         });
 
         setStepState(stepEl, 'completed', [{ file: action.path, action: 'created successfully' }]);

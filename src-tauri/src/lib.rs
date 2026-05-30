@@ -217,6 +217,29 @@ fn analyze_command_risk(command: String) -> CommandRisk {
 }
 
 #[tauri::command]
+fn agent_write_file(cwd: String, path: String, content: String) -> Result<(), String> {
+    use std::path::Path;
+    use std::fs;
+
+    let target_path = if Path::new(&path).is_absolute() {
+        std::path::PathBuf::from(path)
+    } else {
+        Path::new(&cwd).join(path)
+    };
+
+    if let Some(parent) = target_path.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            return Err(format!("Failed to create parent directories: {}", e));
+        }
+    }
+
+    match fs::write(&target_path, content) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to write file to {}: {}", target_path.display(), e)),
+    }
+}
+
+#[tauri::command]
 fn update_nim_config(state: State<'_, AppState>, config: NimConfig) -> Result<(), String> {
     let mut client = state
         .nim_client
@@ -353,6 +376,7 @@ pub fn run() {
             // AI
             ai_ask,
             ai_agent_step,
+            agent_write_file,
             analyze_command_risk,
             update_nim_config,
             get_nim_config,
