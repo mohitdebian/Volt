@@ -406,43 +406,150 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     retrying: '⟳',
   };
 
-  // Build the workflow visualization container
+  // ── Agent State ──
+  let agentPaused = false;
+  let agentStopped = false;
+
+  // ── Sidebar Dashboard Elements ──
+  const bannerIdle = document.getElementById('agent-banner-idle');
+  const bannerRunning = document.getElementById('agent-banner-running');
+  const idleActions = document.getElementById('sidebar-idle-actions');
+  const agentControls = document.getElementById('sidebar-agent-controls');
+  const currentStepSection = document.getElementById('agent-current-step-section');
+  const currentStepCard = document.getElementById('agent-current-step');
+  const progressFill = document.getElementById('agent-progress-fill');
+  const progressLabel = document.getElementById('agent-progress-label');
+  const recentActivity = document.getElementById('agent-recent-activity');
+  const activityList = document.getElementById('agent-activity-list');
+
+  // Switch sidebar to "running" mode
+  function enterAgentMode() {
+    bannerIdle?.classList.add('hidden');
+    bannerRunning?.classList.remove('hidden');
+    idleActions?.classList.add('hidden');
+    agentControls?.classList.remove('hidden');
+    currentStepSection?.classList.remove('hidden');
+    recentActivity?.classList.remove('hidden');
+    if (activityList) activityList.innerHTML = '';
+  }
+
+  // Switch sidebar back to "idle" mode
+  function exitAgentMode() {
+    bannerRunning?.classList.add('hidden');
+    bannerIdle?.classList.remove('hidden');
+    agentControls?.classList.add('hidden');
+    idleActions?.classList.remove('hidden');
+  }
+
+  // Update Current Step card in sidebar
+  function updateCurrentStep(title, desc, time) {
+    if (!currentStepCard) return;
+    currentStepCard.querySelector('.acs-icon').textContent = '◔';
+    currentStepCard.querySelector('.acs-title').textContent = title;
+    currentStepCard.querySelector('.acs-desc').textContent = desc || '';
+    currentStepCard.querySelector('.acs-time').textContent = time;
+  }
+
+  // Update progress bar
+  function updateProgress(completed, total) {
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    if (progressFill) progressFill.style.width = `${pct}%`;
+    if (progressLabel) progressLabel.textContent = `${pct}%`;
+  }
+
+  // Add item to Recent Activity feed in sidebar
+  function addActivityItem(title, state, time) {
+    if (!activityList) return;
+    const item = document.createElement('div');
+    item.className = 'agent-activity-item';
+    const iconClass = state === 'completed' ? 'completed' : state === 'failed' ? 'failed' : 'running';
+    const iconChar = STATE_ICONS[state] || '○';
+    item.innerHTML = `
+      <span class="aa-icon ${iconClass}">${iconChar}</span>
+      <span class="aa-title">${title}</span>
+      <span class="aa-time">${time}</span>
+    `;
+    activityList.appendChild(item);
+    activityList.scrollTop = activityList.scrollHeight;
+    return item;
+  }
+
+  // Update last activity item's state
+  function updateLastActivity(state, time) {
+    if (!activityList) return;
+    const last = activityList.lastElementChild;
+    if (!last) return;
+    const iconEl = last.querySelector('.aa-icon');
+    if (iconEl) {
+      iconEl.className = `aa-icon ${state}`;
+      iconEl.textContent = STATE_ICONS[state] || '○';
+    }
+    const timeEl = last.querySelector('.aa-time');
+    if (timeEl) timeEl.textContent = time;
+  }
+
+  // Wire Pause/Stop buttons
+  const pauseBtn = document.getElementById('agent-pause-btn');
+  const stopBtn = document.getElementById('agent-stop-btn');
+  
+  const onPause = () => {
+    agentPaused = !agentPaused;
+    if (pauseBtn) {
+      pauseBtn.innerHTML = agentPaused 
+        ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><polygon points="2,1 11,6 2,11"/></svg> Resume`
+        : `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="1" width="4" height="10" rx="1"/><rect x="7" y="1" width="4" height="10" rx="1"/></svg> Pause Agent`;
+    }
+    if (bannerRunning) {
+      const h3 = bannerRunning.querySelector('h3');
+      if (h3) h3.textContent = agentPaused ? 'Agent paused' : 'Agent is running';
+    }
+  };
+  const onStop = () => { agentStopped = true; };
+
+  pauseBtn?.addEventListener('click', onPause);
+  stopBtn?.addEventListener('click', onStop);
+
+  // ── Build Sidebar Workflow Visualization ──
   container.innerHTML = '';
   const wfContainer = document.createElement('div');
   wfContainer.className = 'wf-container';
 
-  // ── Planning Header ──
   const header = document.createElement('div');
   header.className = 'wf-header';
   header.innerHTML = `
     <div class="wf-header-icon">⚡</div>
     <div class="wf-header-text">
       <h4>Agent Loop</h4>
-      <span>Initializing...</span>
+      <span>Planning and executing...</span>
     </div>
     <div class="wf-step-count">0 steps</div>
   `;
   wfContainer.appendChild(header);
 
-  // ── Steps List ──
   const stepsList = document.createElement('div');
   stepsList.className = 'wf-steps';
   wfContainer.appendChild(stepsList);
   container.appendChild(wfContainer);
-  
+
   const headerStatus = header.querySelector('.wf-header-text span');
   const stepCount = header.querySelector('.wf-step-count');
 
-  // Helper to append a step to the UI
+  // Enter agent mode
+  enterAgentMode();
+
+  // Helper: add a step to the sidebar step list
   let stepCounter = 0;
+  let completedSteps = 0;
+
   function addUiStep(title, cmd, initialState = 'running', thought = null) {
     stepCounter++;
     stepCount.textContent = `${stepCounter} steps`;
-    
+
     const stepEl = document.createElement('div');
     stepEl.className = 'wf-step';
     stepEl.dataset.state = initialState;
     stepEl.id = `wf-step-${stepCounter}`;
+    stepEl._startTime = Date.now();
 
     const thoughtHtml = thought ? `<div class="wf-step-thought" style="color:var(--t2); font-size: 0.85em; margin-bottom: 4px;">🤔 ${thought}</div>` : '';
 
@@ -451,6 +558,7 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       <div class="wf-step-title">${title}</div>
       ${thoughtHtml}
       <div class="wf-step-cmd">${cmd}</div>
+      <div class="wf-step-time">0.0s</div>
       <div class="wf-step-details"></div>
     `;
 
@@ -461,17 +569,43 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
 
     stepsList.appendChild(stepEl);
     responseArea.scrollTop = responseArea.scrollHeight;
+
+    // Live timer for current step
+    stepEl._timer = setInterval(() => {
+      const elapsed = ((Date.now() - stepEl._startTime) / 1000).toFixed(1);
+      const timeEl = stepEl.querySelector('.wf-step-time');
+      if (timeEl) timeEl.textContent = `${elapsed}s`;
+    }, 100);
+
+    // Update sidebar current step
+    updateCurrentStep(title, thought || cmd, '0.0s');
+    addActivityItem(title, 'running', '0.0s');
+
     return stepEl;
   }
 
   function setStepState(stepEl, state, details = null) {
+    // Stop timer
+    if (stepEl._timer) {
+      clearInterval(stepEl._timer);
+      stepEl._timer = null;
+    }
+
+    const elapsed = ((Date.now() - (stepEl._startTime || Date.now())) / 1000).toFixed(1);
     stepEl.dataset.state = state;
     stepEl.querySelector('.wf-state').textContent = STATE_ICONS[state];
+    const timeEl = stepEl.querySelector('.wf-step-time');
+    if (timeEl) timeEl.textContent = `${elapsed}s`;
 
     if (state === 'completed') {
+      completedSteps++;
       const stateEl = stepEl.querySelector('.wf-state');
       stateEl.style.animation = 'wf-tick-in 0.3s ease forwards';
     }
+
+    // Update sidebar activity
+    updateLastActivity(state, `${elapsed}s`);
+    updateProgress(completedSteps, stepCounter);
 
     if (details && details.length > 0) {
       const detailsEl = stepEl.querySelector('.wf-step-details');
@@ -500,15 +634,31 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
   headerStatus.innerHTML = '<span style="color:#818cf8">Agent running...</span>';
 
   while (!isDone && loopCount < 20) {
+    // Check if stopped
+    if (agentStopped) {
+      headerStatus.innerHTML = '<span style="color:#ef4444">✕</span> Agent stopped';
+      const summaryEl = document.createElement('div');
+      summaryEl.className = 'wf-summary failed';
+      summaryEl.innerHTML = `<span>✕</span> <span>Agent was stopped by user.</span>`;
+      wfContainer.appendChild(summaryEl);
+      break;
+    }
+
+    // Check if paused — wait until unpaused
+    while (agentPaused && !agentStopped) {
+      await new Promise(r => setTimeout(r, 300));
+    }
+    if (agentStopped) continue;
+
     loopCount++;
     const requestId = `req-${++requestCounter}-${Date.now()}`;
-    
+
     let aiResponse = "";
     try {
-      aiResponse = await invoke('ai_agent_step', { 
-        messages, 
-        cwd, 
-        requestId 
+      aiResponse = await invoke('ai_agent_step', {
+        messages,
+        cwd,
+        requestId
       });
     } catch (e) {
       const errEl = addUiStep('Agent Error', 'Backend failure', 'failed');
@@ -518,14 +668,12 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
 
     messages.push({ role: 'assistant', content: aiResponse });
 
-    // Parse action robustly
+    // Parse action
     let actionStr = aiResponse.trim();
-    // If wrapped in backticks, extract it
     const actionMatch = aiResponse.match(/```(?:json)?\r?\n([\s\S]*?)```/);
     if (actionMatch) {
       actionStr = actionMatch[1].trim();
     } else {
-      // Sometimes it outputs raw JSON without backticks, but maybe some text before/after
       const firstBrace = aiResponse.indexOf('{');
       const lastBrace = aiResponse.lastIndexOf('}');
       if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -542,21 +690,17 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
       messages.push({ role: 'user', content: 'SYSTEM: You MUST respond with ONLY a valid JSON object. No other text. Fix the JSON syntax.' });
       continue;
     }
-    
-    const thoughtText = action.thought ? `🤔 ${action.thought}` : '';
 
     // Execute Action
     if (action.action === 'run_command') {
       const stepEl = addUiStep(action.description || 'Running command', action.command, 'running', action.thought);
       term.writeCommand(action.command);
 
-      // Wait for finish with a small buffer to capture all terminal-data events
       let output = "";
       const exitCode = await new Promise((resolve) => {
         let captured = "";
         const onData = (e) => { captured += e.detail; };
         const onFinished = (e) => {
-          // Small delay to let any remaining terminal-data events arrive
           setTimeout(() => {
             document.removeEventListener('terminal-data', onData);
             document.removeEventListener('command-finished', onFinished);
@@ -570,15 +714,15 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
 
       if (exitCode !== 0) {
         setStepState(stepEl, 'failed', [{ action: `Exited with code ${exitCode}` }]);
-        messages.push({ 
-          role: 'user', 
+        messages.push({
+          role: 'user',
           content: `SYSTEM: Command failed with exit code ${exitCode}.\nOutput:\n${output.slice(-2000)}`
         });
       } else {
         const details = inferStepDetails(action.command, action.description);
         setStepState(stepEl, 'completed', details);
-        messages.push({ 
-          role: 'user', 
+        messages.push({
+          role: 'user',
           content: `SYSTEM: Command succeeded.\nOutput:\n${output.slice(-2000)}`
         });
       }
@@ -586,12 +730,11 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     } else if (action.action === 'create_file') {
       const stepEl = addUiStep(action.description || `Create ${action.path}`, `write ${action.path}`, 'running', action.thought);
       try {
-        await invoke('agent_write_file', { 
-          cwd, 
-          path: action.path, 
-          content: action.content 
+        await invoke('agent_write_file', {
+          cwd,
+          path: action.path,
+          content: action.content
         });
-
         setStepState(stepEl, 'completed', [{ file: action.path, action: 'created successfully' }]);
         messages.push({ role: 'user', content: `SYSTEM: File ${action.path} created successfully.` });
       } catch (e) {
@@ -602,9 +745,9 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     } else if (action.action === 'read_file') {
       const stepEl = addUiStep(action.description || `Read ${action.path}`, `read ${action.path}`, 'running', action.thought);
       try {
-        const output = await invoke('agent_read_file', { 
-          cwd, 
-          path: action.path 
+        const output = await invoke('agent_read_file', {
+          cwd,
+          path: action.path
         });
         setStepState(stepEl, 'completed', [{ file: action.path, action: 'read successfully' }]);
         messages.push({ role: 'user', content: `SYSTEM: File contents of ${action.path}:\n${output.slice(-3000)}` });
@@ -616,16 +759,25 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     } else if (action.action === 'done') {
       isDone = true;
       headerStatus.innerHTML = '<span style="color:#22c55e">✓</span> Task complete';
-      
+      updateProgress(stepCounter, stepCounter);
+
       const summaryEl = document.createElement('div');
       summaryEl.className = 'wf-summary success';
       summaryEl.innerHTML = `<span>✓</span> <span>${action.summary || 'Task completed successfully.'}</span>`;
       wfContainer.appendChild(summaryEl);
 
+      // Update sidebar banner to completed state
+      if (bannerRunning) {
+        const h3 = bannerRunning.querySelector('h3');
+        const p = bannerRunning.querySelector('p');
+        if (h3) h3.textContent = 'Task complete';
+        if (p) p.textContent = action.summary || 'All steps finished successfully.';
+      }
+
     } else if (action.action === 'error') {
       isDone = true;
-      headerStatus.innerHTML = '<span style="color:#ef4444">✕</span> Workflow aborted';
-      
+      headerStatus.innerHTML = '<span style="color:#ef4444">✕</span> Agent aborted';
+
       const summaryEl = document.createElement('div');
       summaryEl.className = 'wf-summary failed';
       summaryEl.innerHTML = `<span>✕</span> <strong>${action.message || 'Task failed.'}</strong>`;
@@ -635,11 +787,15 @@ async function startAgentLoop(query, container, responseArea, term, execMode, cw
     }
   }
 
-  if (!isDone) {
+  if (!isDone && !agentStopped) {
     headerStatus.innerHTML = '<span style="color:#f59e0b">⚠</span> Maximum steps reached';
   }
 
-  // Restore input
+  // Cleanup
+  pauseBtn?.removeEventListener('click', onPause);
+  stopBtn?.removeEventListener('click', onStop);
+  exitAgentMode();
+
   const runningBar = document.getElementById('ai-running-bar');
   if (runningBar) runningBar.classList.add('hidden');
   document.getElementById('ai-bar-input')?.focus();

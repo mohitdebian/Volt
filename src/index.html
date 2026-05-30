@@ -81,17 +81,41 @@
       </div>
 
       <div class="sidebar-scroll-area">
-        <!-- Banner -->
-        <div class="ai-banner">
+        <!-- Agent Status Banner (toggles between idle and running) -->
+        <div id="agent-banner-idle" class="ai-banner">
           <div class="ai-banner-text">
             <h3>How can I help you?</h3>
             <p>Ask anything, run commands, or automate tasks.</p>
           </div>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="banner-icon"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
         </div>
+        <div id="agent-banner-running" class="ai-banner agent-running-banner hidden">
+          <div class="ai-banner-text">
+            <h3>Agent is running</h3>
+            <p>Working on your task step by step.</p>
+          </div>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="banner-icon banner-icon-pulse"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+        </div>
 
-        <!-- Quick Actions -->
-        <div class="sidebar-section">
+        <!-- Current Step Section (hidden until agent starts) -->
+        <div id="agent-current-step-section" class="sidebar-section hidden">
+          <h4>Current Step</h4>
+          <div id="agent-current-step" class="agent-current-step-card">
+            <div class="acs-icon">◔</div>
+            <div class="acs-info">
+              <div class="acs-title">Initializing...</div>
+              <div class="acs-desc">Preparing agent loop.</div>
+            </div>
+            <div class="acs-time">0.0s</div>
+          </div>
+          <div id="agent-progress-bar" class="agent-progress">
+            <div id="agent-progress-fill" class="agent-progress-fill"></div>
+          </div>
+          <div id="agent-progress-label" class="agent-progress-label">0%</div>
+        </div>
+
+        <!-- Quick Actions (idle) / Agent Controls (running) -->
+        <div id="sidebar-idle-actions" class="sidebar-section">
           <h4>Quick Actions</h4>
           <div class="qa-grid">
             <button class="qa-btn" id="qa-run-cmd"><span class="qa-icon">❯_</span> Run Command</button>
@@ -100,10 +124,31 @@
             <button class="qa-btn" id="qa-optimize"><span class="qa-icon">&lt;&gt;</span> Optimize Code</button>
           </div>
         </div>
+        <div id="sidebar-agent-controls" class="sidebar-section hidden">
+          <h4>Quick Actions</h4>
+          <div class="agent-controls-grid">
+            <button class="agent-ctrl-btn" id="agent-pause-btn">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="1" width="4" height="10" rx="1"/><rect x="7" y="1" width="4" height="10" rx="1"/></svg>
+              Pause Agent
+            </button>
+            <button class="agent-ctrl-btn" id="agent-viewplan-btn">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="10" height="10" rx="1"/><line x1="3" y1="4" x2="9" y2="4"/><line x1="3" y1="6" x2="9" y2="6"/><line x1="3" y1="8" x2="7" y2="8"/></svg>
+              View Plan
+            </button>
+            <button class="agent-ctrl-btn agent-stop-btn" id="agent-stop-btn">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="1" width="10" height="10" rx="2"/></svg>
+              Stop Agent
+            </button>
+          </div>
+        </div>
 
+        <!-- Recent Activity (shown during/after agent runs) -->
+        <div id="agent-recent-activity" class="sidebar-section hidden">
+          <h4>Recent Activity</h4>
+          <div id="agent-activity-list" class="agent-activity-list"></div>
+        </div>
 
-        
-        <!-- AI Response Area (Dynamic Content) -->
+        <!-- AI Response Area (for non-agent chat) -->
         <div id="ai-response-area"></div>
       </div>
 
