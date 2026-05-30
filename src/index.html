@@ -94,22 +94,18 @@
         <div class="sidebar-section">
           <h4>Quick Actions</h4>
           <div class="qa-grid">
-            <button class="qa-btn"><span class="qa-icon">❯_</span> Run Command</button>
-            <button class="qa-btn"><span class="qa-icon">🐞</span> Explain Error</button>
-            <button class="qa-btn"><span class="qa-icon">📖</span> Search Docs</button>
-            <button class="qa-btn"><span class="qa-icon">&lt;&gt;</span> Optimize Code</button>
+            <button class="qa-btn" id="qa-run-cmd"><span class="qa-icon">❯_</span> Run Command</button>
+            <button class="qa-btn" id="qa-explain-err"><span class="qa-icon">🐞</span> Explain Error</button>
+            <button class="qa-btn" id="qa-search-docs"><span class="qa-icon">📖</span> Search Docs</button>
+            <button class="qa-btn" id="qa-optimize"><span class="qa-icon">&lt;&gt;</span> Optimize Code</button>
           </div>
         </div>
 
         <!-- Recent Commands -->
         <div class="sidebar-section">
           <h4>Recent Commands</h4>
-          <div class="rc-list">
-            <div class="rc-item"><span class="rc-arrow">❯</span> <span class="rc-cmd">git status</span> <span class="rc-time">5m ago</span></div>
-            <div class="rc-item"><span class="rc-arrow">❯</span> <span class="rc-cmd">npm run dev</span> <span class="rc-time">8m ago</span></div>
-            <div class="rc-item"><span class="rc-arrow">❯</span> <span class="rc-cmd">docker compose up -d</span> <span class="rc-time">12m ago</span></div>
-            <div class="rc-item"><span class="rc-arrow">❯</span> <span class="rc-cmd">ls -la</span> <span class="rc-time">15m ago</span></div>
-            <div class="rc-item"><span class="rc-arrow">❯</span> <span class="rc-cmd">git log --oneline</span> <span class="rc-time">1h ago</span></div>
+          <div class="rc-list" id="rc-command-list">
+            <!-- Dynamically populated -->
           </div>
         </div>
         

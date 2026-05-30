@@ -177,11 +177,14 @@
 /* ── VOLT AI SIDEBAR ─────────────────── */
 #volt-ai-sidebar {
   width: 320px;
-  background: var(--b1);
-  border-left: 1px solid var(--br);
+  background: rgba(22, 24, 29, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin: 12px 12px 12px 0;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -245,7 +248,7 @@
 }
 
 /* Input Area */
-.sidebar-input-area { padding: 16px 20px; border-top: 1px solid var(--br); }
+.sidebar-input-area { padding: 16px 20px; }
 .ai-input-wrapper {
   display: flex; align-items: center; background: rgba(0,0,0,0.2);
   border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px;

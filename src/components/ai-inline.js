@@ -102,6 +102,9 @@ export function initInlineAI() {
     }
   });
 
+  // Initialize Sidebar Interactive Elements
+  initSidebarDynamicContent();
+
   // ── Auto-Debug: listen for failed commands ──────────────────
   let autoDebugCooldown = false;
   document.addEventListener('command-failed', (e) => {
@@ -495,4 +498,96 @@ async function executeWorkflow(plan, container, responseArea, term, execMode) {
       sendQuery(synthQuery, true);
     }, 2500);
   }
+}
+
+function initSidebarDynamicContent() {
+  const input = document.getElementById('ai-bar-input');
+  if (!input) return;
+
+  // 1. Quick Actions wiring
+  const qaActions = {
+    'qa-run-cmd': 'Write a command to ',
+    'qa-explain-err': 'Explain the recent error in the terminal output.',
+    'qa-search-docs': 'Search documentation for ',
+    'qa-optimize': 'Optimize the code shown in the terminal output.'
+  };
+
+  for (const [id, promptText] of Object.entries(qaActions)) {
+    document.getElementById(id)?.addEventListener('click', () => {
+      input.value = promptText;
+      input.focus();
+      if (!promptText.endsWith(' ')) {
+        // We need to trigger sendQuery, but since sendQuery reads from the input,
+        // and is inside the module scope, we can simulate an enter keypress or just leave it for the user to press enter.
+        // Actually, since this is simple, let's just dispatch an enter event.
+        input.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+      }
+    });
+  }
+
+  // 2. Recent Commands Wiring
+  renderRecentCommands();
+
+  // Listen for custom command execution events to update recent commands
+  document.addEventListener('command-finished', (e) => {
+    // If the event payload contained the command, we'd add it.
+    // For now we'll hook into where we actually inject/write commands inside ai-inline.js
+  });
+}
+
+export function addRecentCommand(cmd) {
+  if (!cmd || cmd.trim() === '') return;
+  let recents = JSON.parse(localStorage.getItem('volt_recent_commands') || '[]');
+  
+  // Remove if it exists to put it at the top
+  recents = recents.filter(c => c.cmd !== cmd);
+  
+  recents.unshift({ cmd, time: Date.now() });
+  if (recents.length > 5) recents.pop();
+  
+  localStorage.setItem('volt_recent_commands', JSON.stringify(recents));
+  renderRecentCommands();
+}
+
+function renderRecentCommands() {
+  const listEl = document.getElementById('rc-command-list');
+  if (!listEl) return;
+  
+  let recents = JSON.parse(localStorage.getItem('volt_recent_commands') || '[]');
+  
+  if (recents.length === 0) {
+    // Show some defaults for onboarding
+    recents = [
+      { cmd: 'git status', time: Date.now() - 300000 },
+      { cmd: 'npm run dev', time: Date.now() - 800000 },
+      { cmd: 'docker compose up -d', time: Date.now() - 1200000 },
+      { cmd: 'ls -la', time: Date.now() - 900000 },
+      { cmd: 'git log --oneline', time: Date.now() - 3600000 },
+    ];
+  }
+  
+  listEl.innerHTML = '';
+  recents.forEach(item => {
+    const elapsed = Date.now() - item.time;
+    let timeStr = 'just now';
+    if (elapsed > 3600000) timeStr = Math.floor(elapsed/3600000) + 'h ago';
+    else if (elapsed > 60000) timeStr = Math.floor(elapsed/60000) + 'm ago';
+    
+    const div = document.createElement('div');
+    div.className = 'rc-item';
+    div.style.cursor = 'pointer';
+    div.innerHTML = `<span class="rc-arrow">❯</span> <span class="rc-cmd">${item.cmd}</span> <span class="rc-time">${timeStr}</span>`;
+    
+    // Hover effects
+    div.addEventListener('mouseenter', () => div.style.color = 'var(--t1)');
+    div.addEventListener('mouseleave', () => div.style.color = '');
+    
+    div.addEventListener('click', () => {
+      // Find the active terminal and inject the command
+      const term = getActiveTerminal();
+      if (term) term.injectCommand(item.cmd);
+    });
+    
+    listEl.appendChild(div);
+  });
 }
