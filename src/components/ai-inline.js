@@ -254,8 +254,11 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
             .replace(/\n/g, '<br>') + '<br><br>';
         }
         contentSpan.innerHTML = html;
-        
-        executeWorkflow(workflowResult.parsed, aiDiv, responseArea, term, execMode);
+        // The AI generated a static workflow instead of a command.
+        // Route this into the active agent loop instead.
+        unlistenChunk();
+        contentSpan.innerHTML = '';
+        return await startAgentLoop(query, aiDiv, responseArea, term, execMode, cwd);
       } else {
         let commands = extractCommands(finalResponse);
         
@@ -379,7 +382,10 @@ const WORKFLOW_KEYWORDS = [
 
 function isWorkflowQuery(query) {
   const lower = query.toLowerCase();
-  return WORKFLOW_KEYWORDS.some(kw => lower.includes(kw));
+  const kwMatch = WORKFLOW_KEYWORDS.some(kw => lower.includes(kw));
+  // If it's longer than 3 words and starts with a verb, it's often a workflow
+  const isComplex = query.split(' ').length > 3 && /^(build|create|make|write|generate|setup|init)/.test(lower);
+  return kwMatch || isComplex;
 }
 
 function tryParseWorkflow(text) {
