@@ -134,13 +134,11 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
   if (!query) return;
   if (queryOverride === null && input) input.value = '';
 
-  const bar = document.getElementById('ai-bar');
   const runningBar = document.getElementById('ai-running-bar');
   const responseArea = document.getElementById('ai-response-area');
   
-  if (!bar || !runningBar || !responseArea) return;
+  if (!runningBar || !responseArea) return;
 
-  bar.classList.add('hidden');
   runningBar.classList.remove('hidden');
 
   // Append user message
@@ -291,9 +289,8 @@ async function sendQuery(queryOverride = null, hidden = false, modeOverride = nu
       }
     }
 
-    // Hide running bar and restore input
+    // Hide running bar
     runningBar.classList.add('hidden');
-    bar.classList.remove('hidden');
     
     // Crucial fix: if we executed a command, focus the terminal so the user can interact (e.g. type passwords).
     // Otherwise, keep focus in the AI bar for follow-up chatting.
