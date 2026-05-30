@@ -73,16 +73,26 @@ export async function createTerminal(tabId, container, cwd = null) {
     if (ctrl && e.shiftKey && e.key === 'P') return false; // palette
     
     // Ctrl+Shift+C → Copy to clipboard using Tauri native API
-    if (ctrl && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
-      if (e.type === 'keydown' && term.hasSelection()) {
-        writeText(term.getSelection()).catch(console.error);
-        term.clearSelection();
+    if (ctrl && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.code === 'KeyC')) {
+      if (e.type === 'keydown') {
+        const sel = term.getSelection();
+        if (sel) {
+          writeText(sel).catch(console.error);
+          term.clearSelection();
+        }
       }
       return false;
     }
     
-    // Ctrl+Shift+V → Let browser/OS handle paste
-    if (ctrl && e.shiftKey && (e.key === 'V' || e.key === 'v')) return false;
+    // Ctrl+Shift+V → Paste from clipboard using Tauri native API
+    if (ctrl && e.shiftKey && (e.key === 'V' || e.key === 'v' || e.code === 'KeyV')) {
+      if (e.type === 'keydown') {
+        readText().then(text => {
+          if (text) invoke('write_pty', { sessionId, data: text }).catch(console.error);
+        }).catch(console.error);
+      }
+      return false;
+    }
 
     // By default, Ctrl+C (without shift) is passed to xterm (returns true), 
     // which sends a SIGINT (\x03) to the running process.
