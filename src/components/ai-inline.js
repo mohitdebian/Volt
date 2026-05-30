@@ -45,7 +45,7 @@ export function initInlineAI() {
 
   // React to state changes
   store.subscribe('aiModeActive', active => {
-    const container = document.getElementById('ai-container');
+    const container = document.getElementById('volt-ai-sidebar');
     const bar = document.getElementById('ai-bar');
     const input = document.getElementById('ai-bar-input');
     const runningBar = document.getElementById('ai-running-bar');
@@ -71,7 +71,7 @@ export function initInlineAI() {
   // Resizer logic
   let isResizing = false;
   const resizer = document.getElementById('panel-resizer');
-  const container = document.getElementById('ai-container');
+  const container = document.getElementById('volt-ai-sidebar');
   const terminalSection = document.getElementById('terminal-section');
   
   resizer?.addEventListener('mousedown', e => {
