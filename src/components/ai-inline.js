@@ -103,23 +103,88 @@ export function initInlineAI() {
 
   // ── Auto-Debug: listen for failed commands ──────────────────
   let autoDebugCooldown = false;
-  document.addEventListener('command-failed', (e) => {
+  document.addEventListener('command-failed', async (e) => {
     const { exitCode } = e.detail;
-    // Only auto-debug if AI panel is open and we're not already debugging
-    if (!store.get('aiModeActive') || autoDebugCooldown) return;
+    // Only auto-debug if we're not already debugging
+    if (autoDebugCooldown) return;
+    
+    // Auto-open sidebar if closed
+    if (!store.get('aiModeActive')) {
+       store.set('aiModeActive', true);
+    }
     
     autoDebugCooldown = true;
-    setTimeout(() => { autoDebugCooldown = false; }, 5000); // 5s cooldown
+    setTimeout(() => { autoDebugCooldown = false; }, 10000); // 10s cooldown
 
     const term = getActiveTerminal();
     if (!term) return;
 
-    // Grab recent terminal output for error context
+    const cwd = await getCwd();
     const errorOutput = term.getText();
-    const debugQuery = `The last command failed with exit code ${exitCode}. Here is the recent terminal output. Explain the error and suggest a fix.`;
     
-    // Send as a hidden debug query
-    sendQuery(debugQuery, true, 'debug');
+    // Create UI container in response area
+    const responseArea = document.getElementById('ai-response-area');
+    if (!responseArea) return;
+    
+    const card = document.createElement('div');
+    card.style.background = 'rgba(255, 0, 0, 0.05)';
+    card.style.borderLeft = '3px solid #e06c75';
+    card.style.padding = '12px';
+    card.style.marginBottom = '16px';
+    card.style.borderRadius = '0 8px 8px 0';
+    card.innerHTML = `<div style="display:flex; align-items:center; gap:8px; color:#e06c75; margin-bottom:8px; font-weight:600;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        Analyzing Error...
+      </div>`;
+    responseArea.appendChild(card);
+    responseArea.scrollTop = responseArea.scrollHeight;
+
+    const requestId = `err-${Date.now()}`;
+    const query = `Exit code ${exitCode}. Please analyze the provided terminal output and return JSON.`;
+
+    try {
+      const invokeResult = await invoke('ai_ask', { 
+        query, 
+        cwd, 
+        mode: 'error_intelligence', 
+        requestId, 
+        terminalOutput: errorOutput.slice(-3000) 
+      });
+      
+      if (invokeResult) {
+        try {
+           const jsonStr = invokeResult.replace(/```json/g, '').replace(/```/g, '').trim();
+           const json = JSON.parse(jsonStr);
+           let causesHtml = (json.causes || []).map(c => `<li>${c}</li>`).join('');
+           
+           card.innerHTML = `
+             <div style="color:#e06c75; font-weight:bold; margin-bottom:12px; display:flex; gap:8px; align-items:center;">
+               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+               ${json.title || 'Error Details'}
+             </div>
+             ${causesHtml ? `
+               <div style="font-size:12px; margin-bottom:8px; color:var(--t2);"><strong>Possible Causes:</strong></div>
+               <ul style="margin:0 0 12px 16px; padding:0; font-size:12px; color:var(--t1);">
+                 ${causesHtml}
+               </ul>
+             ` : ''}
+             <div style="font-size:12px; margin-bottom:4px; color:var(--t2);"><strong>Suggested Fix:</strong></div>
+             <div style="background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; font-family:monospace; font-size:11px; color:#98c379;">
+               ${json.fix || 'No fix suggested'}
+             </div>
+           `;
+           responseArea.scrollTop = responseArea.scrollHeight;
+        } catch (e) {
+           console.error("Failed to parse error intelligence JSON:", e, invokeResult);
+           card.innerHTML = `<div style="color:var(--t1)">${invokeResult.replace(/\\n/g, '<br>')}</div>`;
+        }
+      } else {
+        card.remove();
+      }
+    } catch(e) {
+      console.error("Error calling ai_ask for intelligence:", e);
+      card.remove();
+    }
   });
 }
 

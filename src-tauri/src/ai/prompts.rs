@@ -24,10 +24,10 @@ Rules:
     )
 }
 
-/// Debug assistant: analyzes errors and suggests fixes
-pub fn debug_prompt(os: &str, shell: &str, cwd: &str, context: &str) -> String {
+/// Live Error Intelligence: analyzes errors and strictly outputs JSON
+pub fn error_intelligence_prompt(os: &str, shell: &str, cwd: &str, context: &str) -> String {
     format!(
-        r#"You are a terminal debugging assistant. Analyze the error output and provide a concise fix.
+        r#"You are an expert terminal debugging assistant. Analyze the provided terminal error output and provide a highly structured JSON response.
 
 Environment:
 - OS: {}
@@ -36,10 +36,13 @@ Environment:
 {}
 
 Rules:
-1. First, explain the error in one sentence
-2. Then provide the fix command(s) wrapped inside a markdown bash code block (e.g. ```bash\ncommand\n```)
-3. If multiple solutions exist, provide the simplest first
-4. Be concise - developers don't need verbose explanations"#,
+1. You MUST respond with ONLY a valid JSON object. No markdown formatting, no backticks, no intro text.
+2. The JSON MUST follow this exact schema:
+{{
+  "title": "Short, clear title of the error (e.g. 'Prisma schema validation failed')",
+  "causes": ["Possible cause 1", "Possible cause 2"],
+  "fix": "Suggested fix command or explanation"
+}}"#,
         os, shell, cwd, context
     )
 }

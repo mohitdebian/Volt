@@ -97,8 +97,8 @@ async fn ai_ask(
             &cwd,
             &prompt_context,
         ),
-        "debug" => {
-            ai::prompts::debug_prompt(&context.os, &context.shell, &cwd, &prompt_context)
+        "error_intelligence" => {
+            ai::prompts::error_intelligence_prompt(&context.os, &context.shell, &cwd, &prompt_context)
         }
         "explain" => ai::prompts::explain_prompt().to_string(),
         "git" => {
