@@ -298,16 +298,38 @@ export async function createTerminal(tabId, container, cwd = null) {
           if (activeBuffer.type === 'alternate') return; // Don't trigger inside vim/htop
 
           const lines = [];
-          for (let i = Math.max(0, activeBuffer.baseY + activeBuffer.cursorY - 1); i <= activeBuffer.baseY + activeBuffer.cursorY; i++) {
+          for (let i = Math.max(0, activeBuffer.baseY + activeBuffer.cursorY - 2); i <= activeBuffer.baseY + activeBuffer.cursorY; i++) {
             const line = activeBuffer.getLine(i);
             if (line) lines.push(line.translateToString(true).trimEnd());
           }
           const text = lines.join('\n').trim();
           
           if (/[#$>%❯➜]\s*$/.test(text)) {
+            // Check for obvious errors in the command output (last 15 lines)
+            let detectedError = false;
+            let recentText = '';
+            for (let i = Math.max(0, activeBuffer.baseY + activeBuffer.cursorY - 15); i <= activeBuffer.baseY + activeBuffer.cursorY; i++) {
+              const line = activeBuffer.getLine(i);
+              if (line) recentText += line.translateToString(true) + '\n';
+            }
+            
+            // Common shell and compiler error patterns
+            if (/(command not found|error:|fatal:|exception:|failed|cannot find|no such file|is not recognized|npm ERR!|npm error)/i.test(recentText)) {
+                detectedError = true;
+            }
+
+            const simulatedExitCode = detectedError ? 1 : 0;
+
             document.dispatchEvent(new CustomEvent('command-finished', {
-              detail: { exitCode: 0, tabId, sessionId }
+              detail: { exitCode: simulatedExitCode, tabId, sessionId }
             }));
+            
+            if (simulatedExitCode !== 0) {
+              document.dispatchEvent(new CustomEvent('command-failed', {
+                detail: { exitCode: simulatedExitCode, tabId, sessionId }
+              }));
+            }
+
             if (activeCommandMarker) {
               renderCommandBlock(activeCommandMarker);
               activeCommandMarker = null;
