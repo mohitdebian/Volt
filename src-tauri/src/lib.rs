@@ -174,15 +174,26 @@ async fn ai_agent_step(
     cwd: String,
     request_id: String,
 ) -> Result<String, String> {
-    let mut context = TerminalContext::gather(&cwd);
-    let prompt_context = context.to_prompt_context();
+    // Only gather full context on the FIRST step (1 message = just the user's initial prompt).
+    // Subsequent steps already have all context in the conversation history,
+    // so re-scanning git, file tree, and tool versions every iteration is wasteful.
+    let is_first_step = messages.len() <= 1;
 
-    let system_prompt = ai::prompts::agent_step_prompt(
-        &context.os,
-        &context.shell,
-        &cwd,
-        &prompt_context,
-    );
+    let system_prompt = if is_first_step {
+        let context = TerminalContext::gather(&cwd);
+        let prompt_context = context.to_prompt_context();
+        ai::prompts::agent_step_prompt(
+            &context.os,
+            &context.shell,
+            &cwd,
+            &prompt_context,
+        )
+    } else {
+        // Lightweight: just OS + shell + cwd, no file scanning
+        let os = std::env::consts::OS;
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "bash".to_string());
+        ai::prompts::agent_step_prompt(os, &shell, &cwd, "")
+    };
 
     let mut full_messages = vec![
         ChatMessage {
@@ -226,6 +237,18 @@ fn agent_write_file(cwd: String, path: String, content: String) -> Result<(), St
     } else {
         Path::new(&cwd).join(path)
     };
+
+    // Safety: prevent the agent from overwriting Volt's own source files
+    let canonical = target_path.canonicalize().unwrap_or_else(|_| target_path.clone());
+    let volt_src = Path::new(env!("CARGO_MANIFEST_DIR"));
+    if let Ok(volt_canon) = volt_src.canonicalize() {
+        if canonical.starts_with(&volt_canon) {
+            return Err(format!(
+                "BLOCKED: Cannot write to Volt's own source tree ({}). Use a different directory.",
+                canonical.display()
+            ));
+        }
+    }
 
     if let Some(parent) = target_path.parent() {
         if let Err(e) = fs::create_dir_all(parent) {
