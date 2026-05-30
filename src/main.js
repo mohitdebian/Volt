@@ -54,8 +54,8 @@ async function init() {
   // ── Exec mode pill (click cycles) ──
   const pill = document.getElementById('exec-mode-pill');
   const pillLabel = document.getElementById('exec-mode-label');
-  const modes = ['ask', 'agent', 'full'];
-  const modeLabels = { ask: 'Ask', agent: 'Agent', full: 'Full Access' };
+  const modes = ['ask', 'agent', 'autopilot'];
+  const modeLabels = { ask: '💬 Ask', agent: '🤖 Agent', autopilot: '🚀 Autopilot' };
 
   if (!store.get('execMode')) store.set('execMode', 'agent');
 

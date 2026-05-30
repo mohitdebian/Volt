@@ -90,16 +90,20 @@
 
 .mode-pill {
   display: flex; align-items: center; gap: 4px;
-  height: 24px; padding: 0 8px;
-  border-radius: 12px; border: 1px solid var(--br2);
+  height: 26px; padding: 0 10px; margin-right: 4px;
+  border-radius: 6px; border: 1px solid var(--br2);
   background: var(--b2); color: var(--t2);
-  font-size: 10px; font-weight: 500; letter-spacing: 0.02em;
-  transition: all var(--t);
+  font-size: 11px; font-weight: 500; letter-spacing: 0.01em;
+  transition: all var(--t); cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
-.mode-pill:hover { border-color: var(--ac); color: var(--t1); }
-.mode-pill.ask   { color: var(--t2); }
-.mode-pill.agent { color: var(--t1); }
-.mode-pill.full  { border-color: rgba(248,81,73,0.4); color: var(--err); }
+.mode-pill:hover { border-color: var(--br); background: var(--b3); }
+.mode-pill:active { transform: scale(0.97); }
+.mode-pill.ask   { background: rgba(97, 175, 239, 0.1); border-color: rgba(97, 175, 239, 0.3); color: #61afef; }
+.mode-pill.agent { background: rgba(152, 195, 121, 0.1); border-color: rgba(152, 195, 121, 0.3); color: #98c379; }
+.mode-pill.autopilot { background: rgba(229, 192, 123, 0.1); border-color: rgba(229, 192, 123, 0.3); color: #e5c07b; }
+.mode-pill .mode-prefix { opacity: 0.7; }
+.mode-pill:hover .mode-prefix { opacity: 1; }
 
 .tb-btn {
   width: 28px; height: 28px; border-radius: 5px;
